@@ -1,4 +1,4 @@
-import type { Game, Lobby, Tile } from '../types';
+import type { Game, Lobby, Tile, UserLobbySummary } from '../types';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -52,6 +52,9 @@ const winningHand: Tile[] = [
   tile('dot', 4),
   tile('dot', 4),
 ];
+
+/** 13-tile hand (winningHand minus one tile). Used at my-turn-draw: you have 13, then draw to get 14. */
+const handBeforeDraw: Tile[] = winningHand.slice(0, -1);
 
 /** Generic 13-tile hand for opponents (not a winning hand). */
 const opponentHand: Tile[] = [
@@ -135,6 +138,10 @@ export function getMockGame(gameId: string): Game {
     case 'my-turn-draw':
       return {
         ...base,
+        playerHands: {
+          ...base.playerHands,
+          [me]: handBeforeDraw,
+        },
         turnState: { ...baseTurnState, playerTurn: me, tileDrawn: false },
         currentPlayer: me,
       };
@@ -143,6 +150,10 @@ export function getMockGame(gameId: string): Game {
         ...base,
         turnState: { ...baseTurnState, playerTurn: me, tileDrawn: true },
         currentPlayer: me,
+        private: {
+          playerHands: {},
+          potentialActions: { [me]: ['mahjong'] },
+        },
       };
     case 'claim': {
       // Only Chow is valid: hand has dot 3 & 4, last discarded dot 5 → chow (3,4,5). Real backend computes this per hand.
@@ -221,6 +232,15 @@ export async function mockCreateLobby(): Promise<{ lobbyId: string }> {
 export async function mockJoinLobby(): Promise<{ lobbyId: string }> {
   await delay(200);
   return { lobbyId: 'mock-lobby' };
+}
+
+export async function mockGetMyLobbies(): Promise<{ lobbies: UserLobbySummary[] }> {
+  await delay(200);
+  return {
+    lobbies: [
+      { lobbyId: 'mock-lobby', currentGameId: 'pre-deal', playerCount: 4 },
+    ],
+  };
 }
 
 export async function mockCreateGame(): Promise<{ gameId: string }> {

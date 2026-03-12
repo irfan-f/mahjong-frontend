@@ -15,11 +15,14 @@ import {
 import { TileView } from '../components/TileView';
 import { tileToLabel } from '../lib/tileAssets';
 import type { Game as GameType, Tile } from '../types';
+import { useTheme } from '../hooks/useTheme';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function Game() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const { getIdToken, user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [game, setGame] = useState<GameType | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -56,7 +59,6 @@ export function Game() {
     };
   }, [gameId, getIdToken]);
 
-  // Poll game state so all players see turns, discards, and phase changes
   useEffect(() => {
     if (!gameId) return;
     const interval = setInterval(() => {
@@ -65,9 +67,7 @@ export function Game() {
         .then((data) => {
           if (data) setGame(data);
         })
-        .catch(() => {
-          // Ignore poll errors; keep showing current game
-        });
+        .catch(() => {});
     }, 2000);
     return () => clearInterval(interval);
   }, [gameId, getIdToken]);
@@ -234,15 +234,16 @@ export function Game() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted">
-        Loading game…
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-muted" role="status" aria-live="polite" aria-busy="true">
+        <span className="inline-block w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" aria-hidden />
+        <p>Loading game…</p>
       </div>
     );
   }
   if (error && !game) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
-        <p className="text-[var(--color-danger)]">{error}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
+        <p className="text-[var(--color-danger)] text-center">{error}</p>
         <Link to="/" className="btn-primary">
           Back to home
         </Link>
@@ -251,8 +252,8 @@ export function Game() {
   }
   if (!game) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
-        <p className="text-muted">Game not found</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
+        <p className="text-muted text-center">Game not found</p>
         <Link to="/" className="btn-primary">
           Back to home
         </Link>
@@ -262,6 +263,7 @@ export function Game() {
 
   const isMyTurn = game.currentPlayer === user?.uid;
   const myHand = game.playerHands?.[user?.uid ?? ''] ?? [];
+  const myMelds = game.playerExposedMelds?.[user?.uid ?? ''] ?? [];
   const init = game.initialization;
   const potentialActions = game.private?.potentialActions?.[user?.uid ?? ''] ?? [];
   const canClaimPong = potentialActions.includes('pong');
@@ -278,60 +280,118 @@ export function Game() {
         ? `Opponent ${opponentIds.indexOf(game.currentPlayer) + 1}`
         : 'Current player';
 
+  const isEnded = game.status === 'ended';
+  const winnerId = game.winnerId;
+  const iWon = winnerId === user?.uid;
+  const winnerLabel = winnerId === user?.uid
+    ? 'You'
+    : winnerId && opponentIds.includes(winnerId)
+      ? `Opponent ${opponentIds.indexOf(winnerId) + 1}`
+      : 'A player';
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-surface)]">
-      {/* Top bar */}
       <header className="app-header sticky top-0 z-10 flex items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/"
-            className="text-muted hover:text-[var(--color-text-primary)] shrink-0"
+            className="flex items-center justify-center w-10 h-10 rounded-lg text-muted hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-panel)] transition-colors shrink-0"
             aria-label="Back to home"
+            title="Back to home"
           >
             ←
           </Link>
-          <span className="font-semibold truncate">Game</span>
+          <div className="min-w-0">
+            <span className="font-semibold text-on-surface truncate block">Game</span>
+            <span className="text-xs text-muted truncate block">Mahjong with friends</span>
+          </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted shrink-0">
-          {game.status === 'ended' && (
-            <span className="text-[var(--color-primary)] font-medium">Ended</span>
+          <ThemeToggle theme={theme} setTheme={setTheme} />
+          {isEnded && (
+            <span className="text-[var(--color-primary)] font-semibold">Game over</span>
           )}
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col min-h-0">
+      <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-h-0">
         <div className="flex-1 overflow-auto p-4 gap-4 flex flex-col max-w-4xl mx-auto w-full">
           {error && (
-            <div className="panel px-4 py-2 text-[var(--color-danger)] text-sm" role="alert">
+            <div
+              className="panel px-4 py-3 text-[var(--color-danger)] text-sm rounded-xl"
+              role="alert"
+            >
               {error}
             </div>
           )}
 
-          {/* Players with discards under each */}
-          <section aria-label="Players and discards" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {isEnded && (
+            <section
+              aria-label="Game over"
+              className="panel p-6 rounded-xl text-center flex flex-col gap-4 border-2 border-[var(--color-primary)] bg-[var(--color-surface-panel)]"
+            >
+              <h2 className="text-xl font-bold text-on-surface">
+                {iWon ? 'You won!' : `${winnerLabel} won!`}
+              </h2>
+              {game.scores && game.playerIds && Object.keys(game.scores).length > 0 && (
+                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted">
+                  {game.playerIds.map((pid) => {
+                    const score = game.scores?.[pid];
+                    const label = pid === user?.uid ? 'You' : `Opponent ${opponentIds.indexOf(pid) + 1}`;
+                    return (
+                      <span key={pid}>
+                        {label}: <strong className="text-on-surface">{score ?? 0}</strong>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              <Link
+                to="/"
+                className="btn-primary inline-flex items-center justify-center max-w-xs mx-auto"
+                aria-label="Back to home"
+                title="Back to home"
+              >
+                Back to home
+              </Link>
+            </section>
+          )}
+
+          <section
+            aria-label="Players and discards"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+          >
             {opponentIds.slice(0, 3).map((pid, idx) => {
               const hand = game.playerHands?.[pid] ?? [];
               const discards = game.playerDiscards?.[pid] ?? [];
+              const melds = game.playerExposedMelds?.[pid] ?? [];
               const isCurrent = pid === game.currentPlayer;
               return (
                 <div
                   key={pid}
-                  className={`panel p-3 flex flex-col items-center gap-2 ${
-                    isCurrent ? 'ring-2 ring-[var(--color-primary)]' : ''
+                  className={`panel p-3 flex flex-col items-center gap-2 rounded-xl ${
+                    isCurrent ? 'ring-2 ring-[var(--color-primary)] ring-offset-2' : ''
                   }`}
                 >
                   <span className="text-sm font-medium truncate w-full text-center">
                     Opponent {idx + 1}
                   </span>
                   <span className="text-muted text-xs">{hand.length} tiles</span>
-                  <button
-                    type="button"
-                    className="text-xs text-muted hover:underline"
-                    aria-label={`View Opponent ${idx + 1} revealed tiles`}
-                    title="View revealed tiles"
-                  >
-                    Revealed
-                  </button>
+                  {melds.length > 0 && (
+                    <div className="w-full flex flex-col gap-1" aria-label={`Opponent ${idx + 1} melds`}>
+                      {melds.map((meld, mi) => (
+                        <div
+                          key={mi}
+                          className="flex flex-wrap justify-center gap-0.5"
+                          title={meld.type}
+                        >
+                          {meld.tiles.map((t, ti) => (
+                            <TileView key={ti} tile={t} className="h-7 w-5" />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="w-full min-h-[2rem] flex flex-wrap justify-center gap-0.5 pt-1">
                     {discards.map((t, i) => (
                       <TileView key={i} tile={t} className="h-8 w-6" />
@@ -340,8 +400,7 @@ export function Game() {
                 </div>
               );
             })}
-            {/* Game info: current player, tiles left, last discarded, your discards */}
-            <div className="panel p-3 flex flex-col items-center gap-2">
+            <div className="panel p-3 flex flex-col items-center gap-2 rounded-xl">
               {init.tilesDealt && (
                 <span className="text-sm font-medium text-on-surface">
                   Current: {currentPlayerLabel}
@@ -364,27 +423,26 @@ export function Game() {
             </div>
           </section>
 
-          {/* Roll & Deal (pre-game) - instruction only; button is in bottom bar */}
           {!init.tilesDealt && (
-            <p className="text-muted text-sm">Ready to deal. Use the button below to start the round.</p>
+            <p className="text-muted text-sm text-center py-2">
+              Ready to deal. Tap the button below to start the round.
+            </p>
           )}
         </div>
 
-        {/* Fixed bottom: action buttons (centered, evenly spaced) then hand */}
         <div className="border-t border-[var(--color-border)] bg-[var(--color-surface-panel)] p-4 flex flex-col gap-4 shrink-0">
-          {/* Action buttons row - centered, evenly spaced */}
           <div className="flex flex-wrap justify-center items-center gap-3">
-            {!init.tilesDealt && (
+            {!init.tilesDealt && !isEnded && (
               <button
                 onClick={handleRollAndDeal}
                 disabled={acting}
                 className="btn-primary"
                 aria-label="Roll and deal tiles"
               >
-                Roll & Deal
+                Roll & deal
               </button>
             )}
-            {init.tilesDealt && isMyTurn && !game.turnState.tileDrawn && (
+            {init.tilesDealt && !isEnded && isMyTurn && !game.turnState.tileDrawn && (
               <button
                 onClick={handleDraw}
                 disabled={acting}
@@ -394,13 +452,13 @@ export function Game() {
                 Draw
               </button>
             )}
-            {init.tilesDealt && showClaimButtons && (
+            {init.tilesDealt && !isEnded && showClaimButtons && (
               <>
                 {canClaimPong && (
                   <button
                     onClick={handleClaimPong}
                     disabled={acting}
-                    className="btn-primary bg-[#7c3aed] hover:bg-[#6d28d9]"
+                    className="btn-primary btn-claim-pong"
                     aria-label="Claim Pong"
                   >
                     Pong
@@ -410,7 +468,7 @@ export function Game() {
                   <button
                     onClick={handleClaimKong}
                     disabled={acting}
-                    className="btn-primary bg-[#4f46e5] hover:bg-[#4338ca]"
+                    className="btn-primary btn-claim-kong"
                     aria-label="Claim Kong"
                   >
                     Kong
@@ -420,7 +478,7 @@ export function Game() {
                   <button
                     onClick={handleClaimChow}
                     disabled={acting}
-                    className="btn-primary bg-[#0d9488] hover:bg-[#0f766e]"
+                    className="btn-primary btn-claim-chow"
                     aria-label="Claim Chow"
                   >
                     Chow
@@ -436,11 +494,11 @@ export function Game() {
                 </button>
               </>
             )}
-            {init.tilesDealt && canDeclareMahjong && (
+            {init.tilesDealt && !isEnded && canDeclareMahjong && (
               <button
                 onClick={handleMahjong}
                 disabled={acting}
-                className="btn-primary bg-[var(--color-warning)] hover:bg-[#9a6b0f]"
+                className="btn-primary btn-claim-mahjong"
                 aria-label="Declare Mahjong"
               >
                 Mahjong
@@ -448,13 +506,27 @@ export function Game() {
             )}
           </div>
 
-          {/* Your hand - always at bottom, same position; tiles are buttons only when choosing discard */}
-          {init.tilesDealt && myHand.length > 0 && (
-            <section aria-label="Your hand" className="panel p-4">
+          {init.tilesDealt && !isEnded && myHand.length > 0 && (
+            <section aria-label="Your hand" className="panel p-4 rounded-xl">
               {isMyTurn && game.turnState.tileDrawn ? (
                 <p className="text-sm text-muted mb-3 text-center">Choose a tile to discard</p>
               ) : (
                 <h2 className="text-sm font-medium text-muted mb-3 text-center">Your hand</h2>
+              )}
+              {myMelds.length > 0 && (
+                <div className="flex flex-col gap-2 mb-3" aria-label="Your melds">
+                  {myMelds.map((meld, mi) => (
+                    <div
+                      key={mi}
+                      className="flex flex-wrap justify-center gap-1"
+                      title={meld.type}
+                    >
+                      {meld.tiles.map((t, ti) => (
+                        <TileView key={ti} tile={t} className="h-12 w-9" />
+                      ))}
+                    </div>
+                  ))}
+                </div>
               )}
               <div className="flex flex-wrap justify-center gap-1 min-h-[3.5rem]">
                 {myHand.map((t, i) =>

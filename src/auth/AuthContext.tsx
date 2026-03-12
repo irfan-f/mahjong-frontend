@@ -55,17 +55,12 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => (useMockApi ? mockUser : null));
+  const [idToken, setIdToken] = useState<string | null>(() => (useMockApi ? 'mock-token' : null));
+  const [loading, setLoading] = useState(() => !useMockApi);
 
   useEffect(() => {
-    if (useMockApi) {
-      setUser(mockUser);
-      setIdToken('mock-token');
-      setLoading(false);
-      return () => {};
-    }
+    if (useMockApi) return;
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {

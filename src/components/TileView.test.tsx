@@ -10,7 +10,7 @@ describe('TileView', () => {
     render(<TileView tile={dotFive} />);
     const img = document.querySelector('img');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute('src', '/tiles/dots_5.svg');
+    expect(img).toHaveAttribute('src', `${import.meta.env.BASE_URL}tiles/dots_5.svg`);
     const wrapper = screen.getByTitle('Dot 5');
     expect(wrapper).toBeInTheDocument();
   });

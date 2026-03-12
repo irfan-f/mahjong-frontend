@@ -3,31 +3,35 @@ import { tileToAssetPath, tileToLabel } from './tileAssets';
 import type { Tile } from '../types';
 
 describe('tileToAssetPath', () => {
+  const base = import.meta.env.BASE_URL;
+
   it('maps character tiles to characters_N.svg', () => {
     expect(tileToAssetPath({ _type: 'character', value: 5, count: 4 } as Tile)).toBe(
-      '/tiles/characters_5.svg'
+      `${base}tiles/characters_5.svg`
     );
   });
 
   it('maps dot tiles to dots_N.svg', () => {
-    expect(tileToAssetPath({ _type: 'dot', value: 9, count: 4 } as Tile)).toBe('/tiles/dots_9.svg');
+    expect(tileToAssetPath({ _type: 'dot', value: 9, count: 4 } as Tile)).toBe(
+      `${base}tiles/dots_9.svg`
+    );
   });
 
   it('maps stick tiles to bamboo_N.svg', () => {
     expect(tileToAssetPath({ _type: 'stick', value: 1, count: 4 } as Tile)).toBe(
-      '/tiles/bamboo_1.svg'
+      `${base}tiles/bamboo_1.svg`
     );
   });
 
   it('maps wind tiles to wind_value.svg', () => {
     expect(tileToAssetPath({ _type: 'wind', value: 'east', count: 4 } as Tile)).toBe(
-      '/tiles/wind_east.svg'
+      `${base}tiles/wind_east.svg`
     );
   });
 
   it('maps dragon tiles to dragon_value.svg', () => {
     expect(tileToAssetPath({ _type: 'dragon', value: 'red', count: 4 } as Tile)).toBe(
-      '/tiles/dragon_red.svg'
+      `${base}tiles/dragon_red.svg`
     );
   });
 });

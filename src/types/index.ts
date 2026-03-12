@@ -17,6 +17,12 @@ export interface Lobby {
   leaderboard?: { playerId: string; wins: number; highestScore: number }[];
 }
 
+export interface UserLobbySummary {
+  lobbyId: string;
+  currentGameId?: string;
+  playerCount: number;
+}
+
 export interface Game {
   _id?: string;
   lobby_id: string;
@@ -25,7 +31,7 @@ export interface Game {
   playerHands?: Record<string, Tile[]>;
   /** All discards per player, in chronological order. Display grouped by player. */
   playerDiscards?: Record<string, Tile[]>;
-  /** Each player's face-up melds (Pong/Kong/Chow) for "view revealed tiles" UI. */
+  /** Each player's face-up melds (Pong/Kong/Chow), shown inline per player. */
   playerExposedMelds?: Record<string, { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[]>;
   turnState: {
     currentPhase: string;

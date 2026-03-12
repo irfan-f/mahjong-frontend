@@ -1,4 +1,4 @@
-import type { Lobby, Game, Tile } from '../types';
+import type { Lobby, Game, Tile, UserLobbySummary } from '../types';
 import { apiFetch } from './client';
 import {
   mockGetLobby,
@@ -6,6 +6,7 @@ import {
   mockCreateLobby,
   mockJoinLobby,
   mockCreateGame,
+  mockGetMyLobbies,
   mockRollAndDeal,
   mockDrawTile,
   mockDiscardTile,
@@ -28,7 +29,7 @@ async function throwOnError(res: Response): Promise<void> {
     const data = JSON.parse(text);
     if (data?.error) msg = data.error;
   } catch {
-    /* use text as-is */
+    /* ignore */
   }
   throw new Error(msg);
 }
@@ -41,6 +42,13 @@ export async function userSetup(token: string | null): Promise<void> {
     token,
   });
   await throwOnError(res);
+}
+
+export async function getMyLobbies(token: string | null): Promise<{ lobbies: UserLobbySummary[] }> {
+  if (useMock) return mockGetMyLobbies();
+  const res = await apiFetch('/api/user/lobbies', { token });
+  await throwOnError(res);
+  return res.json();
 }
 
 export async function createLobby(token: string | null): Promise<{ lobbyId: string }> {

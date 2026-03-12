@@ -2,9 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mahjong</title>
+    <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#011627" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <meta name="keywords" content="mahjong, multiplayer, online game, friends, lobby" />
+    <title>Mahjong with friends</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Mahjong with friends" />
+    <meta property="og:description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Mahjong with friends" />
+    <meta name="twitter:description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+    <script>
+      (function(){var t=localStorage.theme,d=localStorage.darkMode;var dark=(t==="dark")||(t!=="light"&&!(t||d)&&window.matchMedia("(prefers-color-scheme: dark)").matches)||(d==="true");document.documentElement.classList.toggle("dark",dark);})();
+    </script>
+    <style>
+      html, body { background-color: #faf9f7; }
+      html.dark body { background-color: #011627; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

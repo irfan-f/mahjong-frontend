@@ -1,33 +1,73 @@
 @import 'tailwindcss';
 
-/* Design tokens (todate-inspired, SCREEN_DESCRIPTIONS) */
-@theme {
-  /* Light theme (default) */
-  --color-bg-primary: #fbfbfb;
-  --color-bg-header: #f0f0f0;
-  --color-surface: #fbfbfb;
-  --color-surface-panel: #f0f0f0;
-  --color-surface-panel-muted: #e8e8e8;
-  --color-primary: #2aa298;
-  --color-primary-hover: #238a82;
-  --color-secondary: #d3e8f8;
-  --color-text-primary: #403f53;
-  --color-text-muted: #93a1a1;
-  --color-border: #e0e0e0;
-  --color-ring-focus: #2aa298;
-  --color-danger: #c53030;
-  --color-warning: #b7791f;
+/* Class-based dark mode (add .dark on html via useTheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Mahjong with friends – warm, friendly light theme; dark aligns with codespace (Night Owl–style) */
+:root {
+  --theme-transition: 0.2s ease;
+  --btn-nav-hover: rgba(0, 0, 0, 0.06);
 }
 
-/* Base layout: touch targets, focus rings */
+.dark {
+  --btn-nav-hover: rgba(255, 255, 255, 0.08);
+  --color-bg-primary: #011627;
+  --color-bg-header: #011627;
+  --color-surface: #011627;
+  --color-surface-panel: #0b253a;
+  --color-surface-panel-muted: #132f4c;
+  --color-primary: #2dd4bf;
+  --color-primary-hover: #5eead4;
+  --color-secondary: #134e4a;
+  --color-text-primary: #d6deeb;
+  --color-text-muted: #5f7e97;
+  --color-border: #5f7e97;
+  --color-ring-focus: #2dd4bf;
+  --color-danger: #ef5350;
+  --color-warning: #fbbf24;
+  --color-claim-pong: #a78bfa;
+  --color-claim-kong: #818cf8;
+  --color-claim-chow: #2dd4bf;
+  --color-claim-mahjong: #fbbf24;
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2);
+  color-scheme: dark;
+}
+
+@theme {
+  --color-bg-primary: #faf9f7;
+  --color-bg-header: #f5f3f0;
+  --color-surface: #faf9f7;
+  --color-surface-panel: #f0ede8;
+  --color-surface-panel-muted: #e8e5e0;
+  --color-primary: #0d9488;
+  --color-primary-hover: #0f766e;
+  --color-secondary: #ccfbf1;
+  --color-text-primary: #374151;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e2dd;
+  --color-ring-focus: #0d9488;
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+  --color-claim-pong: #7c3aed;
+  --color-claim-kong: #4f46e5;
+  --color-claim-chow: #0d9488;
+  --color-claim-mahjong: #d97706;
+  --shadow-panel: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.06);
+}
+
 @layer base {
   html {
     @apply antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
+    transition: background-color var(--theme-transition), color var(--theme-transition);
   }
   body {
     min-height: 100vh;
+    transition: background-color var(--theme-transition), color var(--theme-transition);
   }
   button:not([aria-hidden]) {
     min-height: 44px;
@@ -40,34 +80,64 @@
   a[href] {
     cursor: pointer;
   }
+  a:focus-visible {
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
+  }
   button:focus-visible {
     outline: 2px solid var(--color-ring-focus);
     outline-offset: 2px;
   }
 }
 
-/* Semantic utility classes */
 @layer components {
   .app-header {
     background-color: var(--color-bg-header);
     border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-panel);
+    transition: background-color var(--theme-transition), border-color var(--theme-transition), box-shadow var(--theme-transition);
+  }
+  .btn-nav-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: var(--color-text-primary);
+    transition: background-color var(--theme-transition), color var(--theme-transition);
+    cursor: pointer;
+    outline: none;
+  }
+  .btn-nav-header:hover {
+    background-color: var(--btn-nav-hover);
+  }
+  .btn-nav-header:focus-visible {
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
   }
   .panel {
     background-color: var(--color-surface-panel);
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-panel);
   }
   .btn-primary {
     background-color: var(--color-primary);
     color: white;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
     min-height: 44px;
     cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
   }
   .btn-primary:hover:not(:disabled) {
     background-color: var(--color-primary-hover);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
   }
   .btn-primary:disabled {
     opacity: 0.6;
@@ -77,19 +147,72 @@
     background-color: transparent;
     border: 2px solid var(--color-primary);
     color: var(--color-primary);
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
     min-height: 44px;
     cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
   }
   .btn-secondary:hover:not(:disabled) {
     background-color: var(--color-secondary);
+    color: var(--color-primary-hover);
+  }
+  .btn-secondary:active:not(:disabled) {
+    transform: scale(0.98);
   }
   .text-on-surface {
     color: var(--color-text-primary);
   }
   .text-muted {
     color: var(--color-text-muted);
+  }
+  .brand-title {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+  .btn-claim-pong {
+    background-color: var(--color-claim-pong);
+  }
+  .btn-claim-pong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-kong {
+    background-color: var(--color-claim-kong);
+  }
+  .btn-claim-kong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-chow {
+    background-color: var(--color-claim-chow);
+  }
+  .btn-claim-chow:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-mahjong {
+    background-color: var(--color-claim-mahjong);
+  }
+  .btn-claim-mahjong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .skip-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 0.375rem 0;
+    transform: translateY(-100%);
+    transition: transform 0.15s ease;
+  }
+  .skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
   }
 }
