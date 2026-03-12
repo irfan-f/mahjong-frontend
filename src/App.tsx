@@ -3,12 +3,14 @@ import { AuthProvider } from './auth/AuthContext';
 import { Home } from './routes/Home';
 import { Lobby } from './routes/Lobby';
 import { Game } from './routes/Game';
+import { Learn } from './routes/Learn';
 
 function SkipLink() {
   return (
     <a
       href="#main-content"
       className="skip-link"
+      aria-label="Skip to main content"
       onClick={(e) => {
         e.preventDefault();
         const main = document.getElementById('main-content');
@@ -31,6 +33,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/lobby/:id" element={<Lobby />} />
           <Route path="/game/:gameId" element={<Game />} />
+          <Route path="/learn" element={<Learn />} />
         </Routes>
       </HashRouter>
     </AuthProvider>

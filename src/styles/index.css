@@ -7,10 +7,12 @@
 :root {
   --theme-transition: 0.2s ease;
   --btn-nav-hover: rgba(0, 0, 0, 0.06);
+  --color-icon-fill: var(--color-text-primary);
 }
 
 .dark {
   --btn-nav-hover: rgba(255, 255, 255, 0.08);
+  --color-icon-fill: var(--color-text-primary);
   --color-bg-primary: #011627;
   --color-bg-header: #011627;
   --color-surface: #011627;
@@ -69,6 +71,18 @@
     min-height: 100vh;
     transition: background-color var(--theme-transition), color var(--theme-transition);
   }
+  .icon-svg {
+    width: 100%;
+    height: 100%;
+    fill: var(--color-icon-fill, currentColor);
+    transition: fill var(--theme-transition), stroke var(--theme-transition), color var(--theme-transition);
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+  .svg-stroke-icon {
+    fill: none;
+    stroke: currentColor;
+  }
   button:not([aria-hidden]) {
     min-height: 44px;
     min-width: 44px;
@@ -80,11 +94,19 @@
   a[href] {
     cursor: pointer;
   }
-  a:focus-visible {
-    outline: 2px solid var(--color-ring-focus);
-    outline-offset: 2px;
+  /* Focus ring only on keyboard focus to avoid visible ring on tap (mobile) */
+  a:focus,
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
   }
-  button:focus-visible {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
     outline: 2px solid var(--color-ring-focus);
     outline-offset: 2px;
   }
@@ -112,6 +134,9 @@
   }
   .btn-nav-header:hover {
     background-color: var(--btn-nav-hover);
+  }
+  .btn-nav-header:focus {
+    outline: none;
   }
   .btn-nav-header:focus-visible {
     outline: 2px solid var(--color-ring-focus);
@@ -161,6 +186,12 @@
   .btn-secondary:active:not(:disabled) {
     transform: scale(0.98);
   }
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+  }
   .text-on-surface {
     color: var(--color-text-primary);
   }
@@ -196,6 +227,17 @@
   .btn-claim-mahjong:hover:not(:disabled) {
     filter: brightness(0.92);
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .skip-link {
     position: absolute;
     top: 0;
@@ -211,8 +253,11 @@
     transition: transform 0.15s ease;
   }
   .skip-link:focus {
+    outline: none;
+  }
+  .skip-link:focus-visible {
     transform: translateY(0);
-    outline: 2px solid currentColor;
+    outline: 2px solid var(--color-ring-focus);
     outline-offset: 2px;
   }
 }
