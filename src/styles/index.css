@@ -1,1 +1,95 @@
 @import 'tailwindcss';
+
+/* Design tokens (todate-inspired, SCREEN_DESCRIPTIONS) */
+@theme {
+  /* Light theme (default) */
+  --color-bg-primary: #fbfbfb;
+  --color-bg-header: #f0f0f0;
+  --color-surface: #fbfbfb;
+  --color-surface-panel: #f0f0f0;
+  --color-surface-panel-muted: #e8e8e8;
+  --color-primary: #2aa298;
+  --color-primary-hover: #238a82;
+  --color-secondary: #d3e8f8;
+  --color-text-primary: #403f53;
+  --color-text-muted: #93a1a1;
+  --color-border: #e0e0e0;
+  --color-ring-focus: #2aa298;
+  --color-danger: #c53030;
+  --color-warning: #b7791f;
+}
+
+/* Base layout: touch targets, focus rings */
+@layer base {
+  html {
+    @apply antialiased;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+  }
+  body {
+    min-height: 100vh;
+  }
+  button:not([aria-hidden]) {
+    min-height: 44px;
+    min-width: 44px;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  a[href] {
+    cursor: pointer;
+  }
+  button:focus-visible {
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* Semantic utility classes */
+@layer components {
+  .app-header {
+    background-color: var(--color-bg-header);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .panel {
+    background-color: var(--color-surface-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background-color: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-secondary);
+  }
+  .text-on-surface {
+    color: var(--color-text-primary);
+  }
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+}

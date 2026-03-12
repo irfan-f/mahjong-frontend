@@ -11,7 +11,7 @@ export function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const handleCreateLobby = async () => {
-    const token = await getIdToken();
+    const token = await getIdToken(true);
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -28,7 +28,7 @@ export function Home() {
 
   const handleJoinLobby = async () => {
     if (!joinId.trim()) return;
-    const token = await getIdToken();
+    const token = await getIdToken(true);
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -45,60 +45,91 @@ export function Home() {
 
   if (!user) {
     return (
-      <div className="p-4 flex flex-col gap-4">
-        <h1 className="text-xl font-bold">Mahjong</h1>
-        <p>Sign in to create or join a lobby</p>
-        <div className="flex gap-2">
-          <button
-            onClick={signIn}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Sign in with Google
-          </button>
-          <button
-            onClick={signInAnonymous}
-            className="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            Sign in anonymously
-          </button>
-        </div>
+      <div className="min-h-screen flex flex-col bg-[var(--color-surface)]">
+        <header className="app-header px-4 py-3">
+          <h1 className="text-xl font-semibold text-on-surface">Mahjong</h1>
+        </header>
+        <main className="flex-1 flex flex-col items-center justify-center p-4 max-w-md mx-auto w-full gap-6">
+          <p className="text-on-surface text-center">Sign in to create or join a game</p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <button
+              onClick={signIn}
+              className="btn-primary flex-1"
+              aria-label="Sign in with Google"
+            >
+              Sign in with Google
+            </button>
+            <button
+              onClick={signInAnonymous}
+              className="btn-secondary flex-1"
+              aria-label="Sign in anonymously"
+            >
+              Sign in anonymously
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="p-4 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Mahjong</h1>
-        <button onClick={signOut} className="text-sm text-gray-600 hover:underline">
+    <div className="min-h-screen flex flex-col bg-[var(--color-surface)]">
+      <header className="app-header flex items-center justify-between px-4 py-3">
+        <h1 className="text-xl font-semibold text-on-surface truncate">Mahjong</h1>
+        <button
+          onClick={signOut}
+          className="text-sm text-muted hover:text-[var(--color-text-primary)] min-h-0 min-w-0 px-2"
+          aria-label="Sign out"
+        >
           Sign out
         </button>
-      </div>
-      {error && <p className="text-red-600">{error}</p>}
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={handleCreateLobby}
-          disabled={loading}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-        >
-          Create Lobby
-        </button>
-        <div className="flex gap-2">
-          <input
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value)}
-            placeholder="Lobby ID"
-            className="border rounded px-3 py-2 flex-1"
-          />
+      </header>
+
+      <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col gap-6">
+        {error && (
+          <div className="panel px-4 py-2 text-[var(--color-danger)] text-sm" role="alert">
+            {error}
+          </div>
+        )}
+
+        <section className="text-center">
+          <p className="text-on-surface font-medium">Play with friends</p>
+          <p className="text-muted text-sm mt-1">Create a lobby or join with a code</p>
+        </section>
+
+        <div className="flex flex-col gap-4">
           <button
-            onClick={handleJoinLobby}
-            disabled={loading || !joinId.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            onClick={handleCreateLobby}
+            disabled={loading}
+            className="btn-primary w-full"
+            aria-label="Create game"
           >
-            Join Lobby
+            Create game
           </button>
+          <div className="panel p-4 flex flex-col sm:flex-row gap-2">
+            <input
+              value={joinId}
+              onChange={(e) => setJoinId(e.target.value)}
+              placeholder="Lobby code"
+              className="flex-1 border border-[var(--color-border)] rounded px-3 py-2 bg-[var(--color-surface)] text-on-surface min-h-[44px]"
+              aria-label="Lobby code"
+            />
+            <button
+              onClick={handleJoinLobby}
+              disabled={loading || !joinId.trim()}
+              className="btn-secondary shrink-0"
+              aria-label="Join game"
+            >
+              Join game
+            </button>
+          </div>
         </div>
-      </div>
+
+        <section className="panel p-4">
+          <h2 className="text-sm font-medium text-muted mb-2">Your games</h2>
+          <p className="text-muted text-sm">No games yet. Create or join a game above.</p>
+        </section>
+      </main>
     </div>
   );
 }

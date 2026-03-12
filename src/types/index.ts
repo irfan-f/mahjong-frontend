@@ -11,6 +11,7 @@ export type Tile =
 export interface Lobby {
   _id?: string;
   players: Record<string, boolean>;
+  currentGameId?: string;
   wins?: Record<string, number>;
   highestScore?: Record<string, number>;
   leaderboard?: { playerId: string; wins: number; highestScore: number }[];
@@ -22,7 +23,10 @@ export interface Game {
   playerIds: string[];
   startingPlayer: string;
   playerHands?: Record<string, Tile[]>;
+  /** All discards per player, in chronological order. Display grouped by player. */
   playerDiscards?: Record<string, Tile[]>;
+  /** Each player's face-up melds (Pong/Kong/Chow) for "view revealed tiles" UI. */
+  playerExposedMelds?: Record<string, { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[]>;
   turnState: {
     currentPhase: string;
     playerTurn: string;

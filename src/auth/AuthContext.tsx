@@ -15,6 +15,31 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { MOCK_USER_ID } from '../api/mock';
+
+const useMockApi =
+  typeof import.meta.env.VITE_USE_MOCK_API !== 'undefined' &&
+  import.meta.env.VITE_USE_MOCK_API !== '';
+
+const mockUser: User = {
+  uid: MOCK_USER_ID,
+  email: null,
+  emailVerified: false,
+  isAnonymous: true,
+  metadata: {},
+  providerData: [],
+  refreshToken: '',
+  tenantId: null,
+  delete: () => Promise.resolve(),
+  getIdToken: () => Promise.resolve('mock-token'),
+  getIdTokenResult: () => Promise.resolve({} as never),
+  reload: () => Promise.resolve(),
+  toJSON: () => ({}),
+  displayName: null,
+  phoneNumber: null,
+  photoURL: null,
+  providerId: 'mock',
+};
 
 interface AuthContextValue {
   user: User | null;
@@ -23,7 +48,8 @@ interface AuthContextValue {
   signIn: () => Promise<void>;
   signInAnonymous: () => Promise<void>;
   signOut: () => Promise<void>;
-  getIdToken: () => Promise<string | null>;
+  /** Get ID token for backend. Pass true to force refresh (recommended when sending to server). */
+  getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (useMockApi) {
+      setUser(mockUser);
+      setIdToken('mock-token');
+      setLoading(false);
+      return () => {};
+    }
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -58,10 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
   }, []);
 
-  const getIdToken = useCallback(async () => {
+  const getIdToken = useCallback(async (forceRefresh = false) => {
+    if (useMockApi) return 'mock-token';
     const u = auth.currentUser;
     if (!u) return null;
-    return u.getIdToken();
+    return u.getIdToken(forceRefresh);
   }, []);
 
   const value: AuthContextValue = {

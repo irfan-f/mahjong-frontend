@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# Mahjong Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web client for **Hong Kong (Cantonese) Mahjong**. React 18, Vite, Tailwind 4, Firebase Auth. Connects to [mahjong-backend](https://github.com/irfan-f/mahjong-express) for lobbies and game state.
 
-Currently, two official plugins are available:
+## Docs
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **API** — Backend OpenAPI spec and run instructions: see the [mahjong-backend](../mahjong-backend) README and [openapi.yaml](../mahjong-backend/openapi.yaml).
 
-## React Compiler
+## Run locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env
+# Fill in Firebase config and VITE_API_URL (e.g. http://localhost:3000)
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+App runs at `http://localhost:5173` (or Vite default). Ensure the backend is running and `VITE_API_URL` points to it.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Run frontend without backend (mock API)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+To step through the UI and test every action without the backend or sign-in:
+
+1. In `.env`, set `VITE_USE_MOCK_API=true` (or any non-empty value).
+2. Run `npm run dev`. You’re automatically signed in as a mock user.
+
+**Full scenario walkthrough**
+
+1. **Home** → Create game (or go to `/lobby/any-id` and Start game) → you land on **pre-deal**.
+2. **pre-deal** — Click **Roll & Deal** → **my-turn-draw**.
+3. **my-turn-draw** — Click **Draw** → **my-turn-discard**.
+4. **my-turn-discard** — Click any tile to **discard** → **claim**.
+5. **claim** — Click **Pong**, **Kong**, or **Chow** → back to **my-turn-discard**.
+6. **my-turn-discard** — Click **Mahjong** → **ended**.
+
+This cycle exercises: Roll & Deal, Draw, Discard, Claim (Pong/Kong/Chow), and Mahjong.
+
+**Manual URLs** (to test a specific UI without clicking through):
+
+| URL | What you see |
+|-----|----------------|
+| `/game/pre-deal` | Roll & Deal button |
+| `/game/my-turn-draw` | Draw button |
+| `/game/my-turn-discard` | Your hand (clickable) + Mahjong button |
+| `/game/claim` | Pong / Kong / Chow buttons (claim from last discard) |
+| `/game/opponent-turn` | Read-only hand (not your turn) |
+| `/game/ended` | Game over, winner and scores |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | Backend base URL (e.g. `http://localhost:3000`) |
+| `VITE_USE_MOCK_API` | If set (e.g. `true`), use mock API and mock user — no backend or sign-in required |
+| `VITE_FIREBASE_API_KEY` | Firebase Web API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `VITE_FIREBASE_APP_ID` | Firebase app ID |
+
+See [.env.example](./.env.example). Do not commit `.env`.
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | TypeScript check + Vite build to `dist/` |
+| `npm run preview` | Serve `dist/` locally |
+| `npm run lint` | Run ESLint |
+| `npm run test` | Run tests in watch mode |
+| `npm run test:run` | Run tests once |
+
+## Routes
+
+- `/` — Home (sign in / create or join lobby)
+- `/lobby/:id` — Lobby room (join, start game when 4 players)
+- `/game/:gameId` — Game table (draw, discard, declare Mahjong)
+
+## Stack
+
+- React 18, React Router 6
+- Vite 6, TypeScript
+- Tailwind CSS 4
+- Firebase Auth (sign-in; ID token sent to backend as Bearer)

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400">
+  <defs>
+    <style>
+      .frame { fill: none; stroke: #1a47a0; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+  <!-- Double blue border: larger design, thicker strokes, wider gap so lines don't overlap -->
+  <rect class="frame" x="40" y="45" width="220" height="310" rx="8" stroke-width="12"/>
+  <rect class="frame" x="66" y="71" width="168" height="258" rx="6" stroke-width="6"/>
+  <!-- Corner flourishes: inset so 6px stroke doesn't overlap inner rect -->
+  <!-- Top-left -->
+  <path class="frame" d="M 80 71 A 14 14 0 0 1 66 85" stroke-width="6" fill="none"/>
+  <!-- Top-right: same axis, arc in opposite direction (sweep 0) -->
+  <path class="frame" d="M 220 71 A 14 14 0 0 0 234 85" stroke-width="6" fill="none"/>
+  <!-- Bottom-right: same axis as inner frame (234, 329), arc from bottom to right like bottom-left -->
+  <path class="frame" d="M 220 329 A 14 14 0 0 1 234 315" stroke-width="6" fill="none"/>
+  <!-- Bottom-left -->
+  <path class="frame" d="M 66 315 A 14 14 0 0 1 80 329" stroke-width="6" fill="none"/>
+</svg>
