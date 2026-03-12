@@ -9,37 +9,13 @@ import {
 import {
   signInAnonymously,
   signInWithPopup,
+  linkWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { MOCK_USER_ID } from '../api/mock';
-
-const useMockApi =
-  typeof import.meta.env.VITE_USE_MOCK_API !== 'undefined' &&
-  import.meta.env.VITE_USE_MOCK_API !== '';
-
-const mockUser: User = {
-  uid: MOCK_USER_ID,
-  email: null,
-  emailVerified: false,
-  isAnonymous: true,
-  metadata: {},
-  providerData: [],
-  refreshToken: '',
-  tenantId: null,
-  delete: () => Promise.resolve(),
-  getIdToken: () => Promise.resolve('mock-token'),
-  getIdTokenResult: () => Promise.resolve({} as never),
-  reload: () => Promise.resolve(),
-  toJSON: () => ({}),
-  displayName: null,
-  phoneNumber: null,
-  photoURL: null,
-  providerId: 'mock',
-};
 
 interface AuthContextValue {
   user: User | null;
@@ -48,6 +24,8 @@ interface AuthContextValue {
   signIn: () => Promise<void>;
   signInAnonymous: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Link current anonymous user to a Google account; preserves UID. */
+  linkWithGoogle: () => Promise<void>;
   /** Get ID token for backend. Pass true to force refresh (recommended when sending to server). */
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 }
@@ -55,12 +33,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => (useMockApi ? mockUser : null));
-  const [idToken, setIdToken] = useState<string | null>(() => (useMockApi ? 'mock-token' : null));
-  const [loading, setLoading] = useState(() => !useMockApi);
+  const [user, setUser] = useState<User | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (useMockApi) return;
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -85,8 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
   }, []);
 
+  const linkWithGoogle = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u || !u.isAnonymous) {
+      throw new Error('Only anonymous users can link to Google');
+    }
+    try {
+      await linkWithPopup(u, new GoogleAuthProvider());
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+      if (code === 'auth/credential-already-in-use') {
+        throw new Error('That Google account is already used. Sign out and sign in with Google to use it.');
+      }
+      if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
+        throw new Error('Sign-in was blocked or cancelled. Allow popups and try again.');
+      }
+      throw err instanceof Error ? err : new Error('Could not link to Google account');
+    }
+  }, []);
+
   const getIdToken = useCallback(async (forceRefresh = false) => {
-    if (useMockApi) return 'mock-token';
     const u = auth.currentUser;
     if (!u) return null;
     return u.getIdToken(forceRefresh);
@@ -99,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signInAnonymous,
     signOut,
+    linkWithGoogle,
     getIdToken,
   };
 

@@ -28,6 +28,8 @@ export interface Game {
   lobby_id: string;
   playerIds: string[];
   startingPlayer: string;
+  /** Display names per player ID (from backend GET game). */
+  playerDisplayNames?: Record<string, string>;
   playerHands?: Record<string, Tile[]>;
   /** All discards per player, in chronological order. Display grouped by player. */
   playerDiscards?: Record<string, Tile[]>;
@@ -54,6 +56,8 @@ export interface Game {
   winnerId?: string;
   scores?: Record<string, number>;
   endedAt?: string;
+  /** When ended, which players have chosen to show their hand to others. */
+  playerShowHand?: Record<string, boolean>;
   private?: {
     playerHands?: Record<string, unknown>;
     potentialActions?: Record<string, string[]>;

@@ -3,8 +3,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-export default defineConfig({
-  base: '/mahjong-frontend/',
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/mahjong-frontend/' : '/',
   plugins: [tailwindcss(), react()],
   server: { port: 3001 },
   test: {
@@ -13,4 +13,4 @@ export default defineConfig({
     setupFiles: './src/setupTests.ts',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
-});
+}));
