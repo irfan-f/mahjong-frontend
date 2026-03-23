@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Game as GameType, Tile } from '../../types';
+import type { Game as GameType, Tile, PlayerMeld } from '../../types';
 import type { TutorialStep } from '../../tutorial/tutorialSteps';
 import { TileView } from '../TileView';
 import { tileToLabel } from '../../lib/tileAssets';
@@ -8,8 +8,12 @@ import { Spinner } from '../Spinner';
 import { Icon } from '../Icon';
 import { icons } from '../../icons';
 
+import type { ScoringResult } from '../../types';
+
 export interface GameBoardProps {
   game: GameType;
+  /** When game ended after declaring Mahjong, the scoring result from the PUT response. */
+  lastScoringResult?: ScoringResult | null;
   currentUserId: string | null;
   currentUserDisplayName?: string | null;
   error: string | null;
@@ -22,6 +26,11 @@ export interface GameBoardProps {
   onClaimKong: () => void;
   onClaimChow: () => void;
   onPassClaim: () => void;
+  onConcealedPong?: (tiles: Tile[]) => void | Promise<void>;
+  onConcealedChow?: (tiles: Tile[]) => void | Promise<void>;
+  onConcealedKong?: (tile: Tile) => void | Promise<void>;
+  /** Open the What-if scorer modal (during game or after game end). Omit in tutorial. */
+  onOpenWhatIf?: () => void;
   mode?: 'standard' | 'tutorial';
   /** When mode is tutorial, only these actions are shown. Omit to use game state. */
   tutorialAllowedActions?: TutorialStep['allowedActions'];
@@ -33,6 +42,7 @@ export interface GameBoardProps {
 
 export function GameBoard({
   game,
+  lastScoringResult,
   currentUserId,
   currentUserDisplayName,
   error,
@@ -45,6 +55,10 @@ export function GameBoard({
   onClaimKong,
   onClaimChow,
   onPassClaim,
+  onConcealedPong = async () => {},
+  onConcealedChow = async () => {},
+  onConcealedKong = async () => {},
+  onOpenWhatIf,
   mode = 'standard',
   tutorialAllowedActions,
   onShowHandChange,
@@ -54,7 +68,7 @@ export function GameBoard({
 
   const isMyTurn = game.currentPlayer === currentUserId;
   const myHand = game.playerHands?.[currentUserId ?? ''] ?? [];
-  const myMelds = game.playerExposedMelds?.[currentUserId ?? ''] ?? [];
+  const myMelds = game.playerMelds?.[currentUserId ?? ''] ?? [];
   const init = game.initialization;
   const potentialActions = game.private?.potentialActions?.[currentUserId ?? ''] ?? [];
   const isTutorial = mode === 'tutorial' && tutorialAllowedActions != null;
@@ -66,6 +80,9 @@ export function GameBoard({
   const canDraw = isTutorial ? Boolean(tutorialAllowedActions.canDraw) : true;
   const canDiscard = isTutorial ? Boolean(tutorialAllowedActions.canDiscard) : true;
   const canPassClaim = isTutorial ? Boolean(tutorialAllowedActions.canPassClaim) : true;
+  const canConcealedPong = potentialActions.includes('concealedPong');
+  const canConcealedChow = potentialActions.includes('concealedChow');
+  const canConcealedKong = potentialActions.includes('concealedKong');
   const showClaimButtons = canClaimPong || canClaimKong || canClaimChow;
   const claimGroupCount = (canClaimPong ? 1 : 0) + (canClaimKong ? 1 : 0) + (canClaimChow ? 1 : 0) + (canPassClaim ? 1 : 0);
   const showClaimDivider = showClaimButtons && claimGroupCount >= 2;
@@ -74,7 +91,124 @@ export function GameBoard({
   const [discardsPopoverPid, setDiscardsPopoverPid] = useState<string | null>(null);
   const [meldsPopoverPid, setMeldsPopoverPid] = useState<string | null>(null);
   const [showHandUpdating, setShowHandUpdating] = useState(false);
+  const [concealedMode, setConcealedMode] = useState<'pong' | 'chow' | 'kong' | null>(null);
+  const [concealedSelectedIndices, setConcealedSelectedIndices] = useState<number[]>([]);
   const panelPopoverRef = useRef<HTMLDivElement>(null);
+
+  const tileEquals = (a: Tile, b: Tile) => a._type === b._type && a.value === b.value;
+  const isNumericSuit = (tile: Tile) =>
+    tile._type === 'dot' || tile._type === 'character' || tile._type === 'stick';
+  const getMeldCountParts = (melds: PlayerMeld[]) => {
+    const base = melds.reduce((sum, meld) => {
+      const tileCount = meld.tileCount ?? meld.tiles?.length ?? 0;
+      return sum + Math.min(tileCount, 3);
+    }, 0);
+    const kongBonus = melds.reduce((sum, meld) => {
+      const tileCount = meld.tileCount ?? meld.tiles?.length ?? 0;
+      return sum + (tileCount >= 4 || meld.type === 'kong' ? 1 : 0);
+    }, 0);
+    return { base, kongBonus };
+  };
+
+  const canCompleteChow = (selected: Tile[], candidate: Tile): boolean => {
+    const next = [...selected, candidate];
+    if (!next.every(isNumericSuit)) return false;
+    const suit = next[0]._type;
+    if (!next.every((t) => t._type === suit)) return false;
+    const values = next.map((t) => t.value as number).sort((a, b) => a - b);
+    if (next.length === 1) return true;
+    if (next.length === 2) {
+      for (const tile of myHand) {
+        if (!isNumericSuit(tile) || tile._type !== suit) continue;
+        const tryValues = [...values, tile.value as number].sort((a, b) => a - b);
+        if (tryValues[0] + 1 === tryValues[1] && tryValues[1] + 1 === tryValues[2]) {
+          return true;
+        }
+      }
+      return false;
+    }
+    if (next.length === 3) {
+      return values[0] + 1 === values[1] && values[1] + 1 === values[2];
+    }
+    return false;
+  };
+
+  const getSelectableConcealedIndices = (): Set<number> => {
+    if (!concealedMode) return new Set();
+    const selectedTiles = concealedSelectedIndices.map((idx) => myHand[idx]).filter(Boolean);
+    const out = new Set<number>();
+    if (concealedMode === 'kong') {
+      const counts = new Map<string, number>();
+      myHand.forEach((tile) => {
+        const key = `${tile._type}:${String(tile.value)}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      });
+      myHand.forEach((tile, index) => {
+        const key = `${tile._type}:${String(tile.value)}`;
+        if ((counts.get(key) ?? 0) >= 4) out.add(index);
+      });
+      return out;
+    }
+    myHand.forEach((candidate, index) => {
+      if (concealedSelectedIndices.includes(index)) return;
+      if (concealedMode === 'pong') {
+        if (selectedTiles.length === 0) {
+          const count = myHand.filter((t) => tileEquals(t, candidate)).length;
+          if (count >= 3) out.add(index);
+          return;
+        }
+        if (selectedTiles.every((t) => tileEquals(t, candidate))) out.add(index);
+        return;
+      }
+      if (concealedMode === 'chow' && concealedSelectedIndices.length < 3) {
+        if (canCompleteChow(selectedTiles, candidate)) out.add(index);
+      }
+    });
+    return out;
+  };
+
+  const concealedSelectableIndices = getSelectableConcealedIndices();
+
+  const resetConcealedSelection = () => {
+    setConcealedMode(null);
+    setConcealedSelectedIndices([]);
+  };
+
+  const selectConcealedTile = async (index: number) => {
+    if (!concealedMode || !concealedSelectableIndices.has(index)) return;
+    if (concealedMode === 'kong') {
+      const tile = myHand[index];
+      if (!tile) return;
+      await onConcealedKong(tile);
+      resetConcealedSelection();
+      return;
+    }
+    const nextIndices = [...concealedSelectedIndices, index];
+    const needed = 3;
+    if (nextIndices.length >= needed) {
+      const tiles = nextIndices.map((i) => myHand[i]).filter(Boolean);
+      if (concealedMode === 'pong') await onConcealedPong(tiles);
+      if (concealedMode === 'chow') await onConcealedChow(tiles);
+      resetConcealedSelection();
+      return;
+    }
+    setConcealedSelectedIndices(nextIndices);
+  };
+
+  const renderMeldTiles = (meld: PlayerMeld, isOwner: boolean) => {
+    if (meld.tiles && (isOwner || meld.visibility !== 'concealed')) {
+      return meld.tiles.map((t, ti) => <TileView key={ti} tile={t} className="h-7 w-5" />);
+    }
+    const count = meld.tileCount ?? meld.tiles?.length ?? 0;
+    return (
+      <>
+        {Array.from({ length: count }).map((_, idx) => (
+          <span key={idx} className="h-7 w-5 rounded-sm bg-border/70 border border-border" aria-hidden />
+        ))}
+        <span className="text-[10px] text-muted w-full text-center">Concealed x{count}</span>
+      </>
+    );
+  };
 
   useEffect(() => {
     if (discardsPopoverPid == null && meldsPopoverPid == null) return;
@@ -132,6 +266,20 @@ export function GameBoard({
             <h2 className="text-xl font-bold text-on-surface">
               {iWon ? 'You won!' : `${winnerLabel} won!`}
             </h2>
+            {(lastScoringResult?.points != null || game.points != null) && (
+              <p className="text-base font-semibold text-on-surface">
+                Total: {(lastScoringResult?.points ?? game.points) ?? 0} points
+              </p>
+            )}
+            {(lastScoringResult?.breakdown ?? game.breakdown) && (lastScoringResult?.breakdown ?? game.breakdown)!.length > 0 && (
+              <ul className="list-none flex flex-col gap-1 text-sm text-muted text-center px-2" aria-label="Scoring breakdown">
+                {(lastScoringResult?.breakdown ?? game.breakdown)!.map((entry, i) => (
+                  <li key={i} className="text-on-surface">
+                    {entry.patternNameEn ?? entry.pattern}: {entry.points} points
+                  </li>
+                ))}
+              </ul>
+            )}
             {game.scores && game.playerIds && Object.keys(game.scores).length > 0 && (
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted">
                 {game.playerIds.map((pid) => {
@@ -191,10 +339,8 @@ export function GameBoard({
           {opponentIds.slice(0, 3).map((pid, idx) => {
             const hand = game.playerHands?.[pid] ?? [];
             const discards = game.playerDiscards?.[pid] ?? [];
-            const melds = game.playerExposedMelds?.[pid] ?? [];
-            const totalTiles = hand.length + melds.reduce((s, m) => s + m.tiles.length, 0);
-            const kongCount = melds.filter((m) => m.type === 'kong').length;
-            const tileCountText = `${totalTiles} tiles${kongCount > 0 ? ` +${kongCount}` : ''}`;
+            const melds = game.playerMelds?.[pid] ?? [];
+            const meldCounts = getMeldCountParts(melds);
             const isCurrent = pid === game.currentPlayer;
             const latestDiscard = discards.length > 0 ? discards[discards.length - 1] : null;
             const olderDiscards = discards.length > 1 ? discards.slice(0, -1).reverse() : [];
@@ -214,14 +360,14 @@ export function GameBoard({
               >
                 <div className="flex items-start justify-between gap-2 min-h-8">
                   <div className="relative flex flex-col items-start gap-1 min-w-0 flex-1">
-                    <span className="text-xs text-muted font-medium">Melds</span>
+                    <span className="text-xs text-muted font-medium">
+                      Melds ({meldCounts.base}{meldCounts.kongBonus > 0 ? ` +${meldCounts.kongBonus}` : ''})
+                    </span>
                     {melds.length === 0 && <span className="text-muted text-xs">None</span>}
                     {melds.length === 1 && (
                       latestMeld && (
                         <div className="flex flex-wrap justify-center gap-0.5" title={latestMeld.type}>
-                          {latestMeld.tiles.map((t, ti) => (
-                            <TileView key={ti} tile={t} className="h-7 w-5" />
-                          ))}
+                          {renderMeldTiles(latestMeld, false)}
                         </div>
                       )
                     )}
@@ -236,9 +382,7 @@ export function GameBoard({
                         >
                           {latestMeld && (
                             <div className="flex flex-wrap justify-center gap-0.5" title={latestMeld.type}>
-                              {latestMeld.tiles.map((t, ti) => (
-                                <TileView key={ti} tile={t} className="h-7 w-5" />
-                              ))}
+                              {renderMeldTiles(latestMeld, false)}
                             </div>
                           )}
                           <span
@@ -256,9 +400,7 @@ export function GameBoard({
                           >
                             {olderMelds.map((meld, i) => (
                               <div key={i} className="flex flex-wrap justify-center gap-0.5" title={meld.type}>
-                                {meld.tiles.map((t, ti) => (
-                                  <TileView key={ti} tile={t} className="h-7 w-5" />
-                                ))}
+                                {renderMeldTiles(meld, false)}
                               </div>
                             ))}
                           </div>
@@ -270,10 +412,10 @@ export function GameBoard({
                     <span className="text-sm font-medium truncate text-center max-w-[100px]">
                       {label}
                     </span>
-                    <span className="text-muted text-xs">{tileCountText}</span>
+                    <span className="text-muted text-xs">Hand ({hand.length})</span>
                   </div>
                   <div className="relative flex flex-col items-end gap-1 min-w-0 flex-1">
-                    <span className="text-xs text-muted font-medium">Discards</span>
+                    <span className="text-xs text-muted font-medium">Discards ({discards.length})</span>
                     {discards.length === 0 && <span className="text-muted text-xs">None</span>}
                     {discards.length === 1 && latestDiscard && (
                       <TileView tile={latestDiscard} className="h-7 w-5" />
@@ -339,6 +481,17 @@ export function GameBoard({
           </p>
         )}
         <div className="flex flex-wrap justify-center items-center gap-2" data-tutorial-anchor="action-bar">
+          {init.tilesDealt && onOpenWhatIf && (
+            <button
+              type="button"
+              onClick={onOpenWhatIf}
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              aria-label="Open What-if scorer"
+              title="Score a hand (what-if)"
+            >
+              What-if
+            </button>
+          )}
           {!init.tilesDealt && !isEnded && canRollAndDeal && (
             <button
               onClick={onRollAndDeal}
@@ -421,20 +574,74 @@ export function GameBoard({
               )}
             </>
           )}
+          {init.tilesDealt && !isEnded && canConcealedPong && (
+            <button
+              onClick={() => {
+                setConcealedMode('pong');
+                setConcealedSelectedIndices([]);
+              }}
+              disabled={acting}
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              aria-label="Concealed Pong"
+            >
+              Concealed Pong
+            </button>
+          )}
+          {init.tilesDealt && !isEnded && canConcealedChow && (
+            <button
+              onClick={() => {
+                setConcealedMode('chow');
+                setConcealedSelectedIndices([]);
+              }}
+              disabled={acting}
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              aria-label="Concealed Chow"
+            >
+              Concealed Chow
+            </button>
+          )}
+          {init.tilesDealt && !isEnded && canConcealedKong && (
+            <button
+              onClick={() => {
+                setConcealedMode('kong');
+                setConcealedSelectedIndices([]);
+              }}
+              disabled={acting}
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              aria-label="Concealed Kong"
+            >
+              Concealed Kong
+            </button>
+          )}
+          {concealedMode && (
+            <button
+              onClick={resetConcealedSelection}
+              disabled={acting}
+              className="btn-secondary inline-flex items-center justify-center gap-2"
+              aria-label="Cancel concealed selection"
+            >
+              Cancel select
+            </button>
+          )}
         </div>
 
         {init.tilesDealt && (myHand.length > 0 || myMelds.length > 0) && (
           <section aria-label={isEnded ? 'Your winning hand' : 'Your hand'} className="panel p-3 rounded-xl" data-tutorial-anchor="hand">
             <div className="flex items-start justify-between gap-2 min-h-8 mb-2">
               <div className="flex flex-col items-start gap-1 min-w-0 flex-1" aria-label="Your melds">
-                <span className="text-xs text-muted font-medium">Melds</span>
+                {(() => {
+                  const myMeldCounts = getMeldCountParts(myMelds);
+                  return (
+                    <span className="text-xs text-muted font-medium">
+                      Melds ({myMeldCounts.base}{myMeldCounts.kongBonus > 0 ? ` +${myMeldCounts.kongBonus}` : ''})
+                    </span>
+                  );
+                })()}
                 {myMelds.length > 0 ? (
                   <div className="flex flex-wrap justify-center gap-0.5">
                     {myMelds.map((meld, mi) => (
                       <div key={mi} className="flex flex-wrap justify-center gap-0.5" title={meld.type}>
-                        {meld.tiles.map((t, ti) => (
-                          <TileView key={ti} tile={t} className="h-10 w-7" />
-                        ))}
+                        {renderMeldTiles(meld, true)}
                       </div>
                     ))}
                   </div>
@@ -459,18 +666,12 @@ export function GameBoard({
                 ) : (
                   <span className="text-sm font-medium text-muted text-center">Your hand</span>
                 )}
-              {(() => {
-                const myTotal = myHand.length + myMelds.reduce((s, m) => s + m.tiles.length, 0);
-                const myKongs = myMelds.filter((m) => m.type === 'kong').length;
-                return (
-                  <span className="text-muted text-xs">
-                    {myTotal} tiles{myKongs > 0 ? ` +${myKongs}` : ''}
-                  </span>
-                );
-              })()}
+              <span className="text-muted text-xs">Tiles ({myHand.length})</span>
               </div>
               <div className="flex flex-col items-end gap-1 min-w-0 flex-1" aria-label="Your discards">
-                <span className="text-xs text-muted font-medium">Discards</span>
+                <span className="text-xs text-muted font-medium">
+                  Discards ({(game.playerDiscards?.[currentUserId ?? ''] ?? []).length})
+                </span>
                 {(game.playerDiscards?.[currentUserId ?? ''] ?? []).length > 0 ? (
                   <div className="flex flex-wrap justify-center gap-0.5">
                     {(game.playerDiscards?.[currentUserId ?? ''] ?? []).map((t, i) => (
@@ -484,11 +685,13 @@ export function GameBoard({
             </div>
             <div className="flex flex-wrap justify-center items-end gap-1 min-h-14 overflow-visible">
               {myHand.map((t, i) => {
-                const canDiscardThisTurn = !isEnded && isMyTurn && game.turnState.tileDrawn && canDiscard;
+                const canDiscardThisTurn = !isEnded && isMyTurn && game.turnState.tileDrawn && canDiscard && concealedMode == null;
                 const isTutorialSuggested =
                   isTutorial && canDiscard && tutorialDiscardTile != null &&
                   t._type === tutorialDiscardTile._type && t.value === tutorialDiscardTile.value;
                 const isClickable = canDiscardThisTurn && (!isTutorial || isTutorialSuggested);
+                const isConcealedSelectable = concealedMode != null && concealedSelectableIndices.has(i);
+                const isConcealedSelected = concealedSelectedIndices.includes(i);
                 const tileEl = isClickable ? (
                   <TileView
                     key={i}
@@ -500,6 +703,20 @@ export function GameBoard({
                     className="h-14 w-10"
                     aria-label={isTutorialSuggested ? 'Discard this tile' : `Discard ${tileToLabel(t)}`}
                     title={isTutorialSuggested ? 'Discard this tile' : undefined}
+                  />
+                ) : isConcealedSelectable ? (
+                  <TileView
+                    key={i}
+                    tile={t}
+                    asButton
+                    onClick={() => {
+                      void selectConcealedTile(i);
+                    }}
+                    disabled={acting}
+                    selected={isConcealedSelected}
+                    className="h-14 w-10"
+                    aria-label={`Select ${tileToLabel(t)} for concealed meld`}
+                    title="Select tile for concealed meld"
                   />
                 ) : (
                   <TileView key={i} tile={t} className="h-14 w-10" />

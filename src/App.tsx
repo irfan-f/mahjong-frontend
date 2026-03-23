@@ -4,6 +4,7 @@ import { Home } from './routes/Home';
 import { Lobby } from './routes/Lobby';
 import { Game } from './routes/Game';
 import { Learn } from './routes/Learn';
+import { WhatIf } from './routes/WhatIf';
 
 function SkipLink() {
   return (
@@ -34,6 +35,8 @@ function App() {
           <Route path="/lobby/:id" element={<Lobby />} />
           <Route path="/game/:gameId" element={<Game />} />
           <Route path="/learn" element={<Learn />} />
+          <Route path="/what-if" element={<WhatIf />} />
+          <Route path="/what-if/:gameId" element={<WhatIf />} />
         </Routes>
       </HashRouter>
     </AuthProvider>

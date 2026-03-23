@@ -1,4 +1,4 @@
-import type { Game, Lobby, Tile, UserLobbySummary } from '../types';
+import type { Game, Lobby, Tile, UserLobbySummary, PlayerMeld, MeldType } from '../types';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -84,6 +84,20 @@ const baseTurnState = {
   tileDiscarded: false,
 };
 
+function tutorialMeld(type: MeldType, tiles: Tile[], declaredAtTurn: number, claimedFromPlayerId: string | null): PlayerMeld {
+  return {
+    meldId: `tutorial-${type}-${declaredAtTurn}-${String(tiles[0]?._type)}-${String(tiles[0]?.value)}`,
+    type,
+    tiles,
+    visibility: 'exposed',
+    source: 'discard-claim',
+    claimedFromPlayerId,
+    claimedTileIndex: tiles.length - 1,
+    declaredAtTurn,
+    faceDown: false,
+  };
+}
+
 export const mockLobby: Lobby = {
   players: { [p1]: true, [p2]: true, [p3]: true, [me]: true },
 };
@@ -109,7 +123,7 @@ function getTutorialBaseGame(): Game {
       [me]: tutorialStartHand,
     },
     playerDiscards: {},
-    playerExposedMelds: {},
+    playerMelds: {},
     currentPlayer: me,
     lastDiscardedTile: null,
     tilesLeft: 82,
@@ -135,9 +149,9 @@ function getTutorialBaseGame(): Game {
 type TutorialStepId = string;
 
 function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
-  const bobChow = { type: 'chow' as const, tiles: [tile('dot', 2), tile('dot', 3), tile('dot', 4)] };
-  const myPong = { type: 'pong' as const, tiles: [d5, d5, d5] };
-  const myKong = { type: 'kong' as const, tiles: [d4, d4, d4, d4] };
+  const bobChow = tutorialMeld('chow', [tile('dot', 2), tile('dot', 3), tile('dot', 4)], 3, p1);
+  const myPong = tutorialMeld('pong', [d5, d5, d5], 4, p2);
+  const myKong = tutorialMeld('kong', [d4, d4, d4, d4], 7, p2);
   const myMelds = [myPong, myKong];
 
   switch (stepId) {
@@ -205,7 +219,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p1]: [],
           [p2]: [d5],
         },
-        playerExposedMelds: { [p2]: [bobChow] },
+        playerMelds: { [p2]: [bobChow] },
         currentPlayer: p3,
         lastDiscardedTile: d5,
         turnState: { currentPhase: 'playing', playerTurn: p3, turn_number: 3, tileDrawn: true, tilesPlaced: false, tileDiscarded: false },
@@ -219,7 +233,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p3]: opponentHand,
           [me]: tutorialHandAfterPong,
         },
-        playerExposedMelds: { [p2]: [bobChow], [me]: [myPong] },
+        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
         playerDiscards: {
           [me]: [s1],
           [p1]: [],
@@ -239,7 +253,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p3]: opponentHand,
           [me]: tutorialHandAfterPongDiscard,
         },
-        playerExposedMelds: { [p2]: [bobChow], [me]: [myPong] },
+        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
         playerDiscards: {
           [me]: [s1, s2],
           [p1]: [tile('stick', 9)],
@@ -259,7 +273,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p3]: opponentHand,
           [me]: tutorialHandAfterPongDiscard,
         },
-        playerExposedMelds: { [p2]: [bobChow], [me]: [myPong] },
+        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
         playerDiscards: {
           [me]: [s1, s2],
           [p1]: [],
@@ -279,7 +293,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p3]: opponentHand,
           [me]: tutorialHandDrawThenWin,
         },
-        playerExposedMelds: { [p2]: [bobChow], [me]: myMelds },
+        playerMelds: { [p2]: [bobChow], [me]: myMelds },
         playerDiscards: {
           [me]: [s1, s2],
           [p1]: [],
@@ -299,7 +313,7 @@ function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
           [p3]: opponentHand,
           [me]: tutorialHandDrawThenWin,
         },
-        playerExposedMelds: { [p2]: [bobChow], [me]: myMelds },
+        playerMelds: { [p2]: [bobChow], [me]: myMelds },
         playerDiscards: {
           [me]: [s1, s2],
           [p1]: [],
@@ -371,7 +385,7 @@ export function getMockGame(gameId: string): Game {
       [me]: winningHand,
     },
     playerDiscards: {} as Record<string, Tile[]>,
-    playerExposedMelds: {},
+    playerMelds: {},
     currentPlayer: me,
     lastDiscardedTile: null as Tile | null,
     tilesLeft: 82,

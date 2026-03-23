@@ -11,9 +11,12 @@ import {
   claimKong,
   claimChow,
   passClaim,
+  concealedPong,
+  concealedChow,
+  concealedKong,
   setShowHand,
 } from '../api/endpoints';
-import type { Game as GameType, Tile } from '../types';
+import type { Game as GameType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { AccountMenu } from '../components/AccountMenu';
 import { GameBoard } from '../components/game/GameBoard';
@@ -27,6 +30,7 @@ export function Game() {
   const { getIdToken, user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [game, setGame] = useState<GameType | null>(null);
+  const [lastScoringResult, setLastScoringResult] = useState<ScoringResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +147,13 @@ export function Game() {
     setError(null);
     try {
       const result = await mahjong(gameId, token);
+      if (result?.points != null || result?.breakdown != null) {
+        setLastScoringResult({
+          scores: result.scores ?? {},
+          points: result.points,
+          breakdown: result.breakdown,
+        });
+      }
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
@@ -235,6 +246,66 @@ export function Game() {
     }
   };
 
+  const handleConcealedPong = async (tiles: Tile[]) => {
+    if (!gameId) return;
+    const token = await getIdToken(true);
+    if (!token) return;
+    setActing(true);
+    setError(null);
+    try {
+      const result = await concealedPong(gameId, tiles, token);
+      if (result?.gameId && result.gameId !== gameId) {
+        navigate(`/game/${result.gameId}`, { replace: true });
+      } else {
+        refresh();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleConcealedChow = async (tiles: Tile[]) => {
+    if (!gameId) return;
+    const token = await getIdToken(true);
+    if (!token) return;
+    setActing(true);
+    setError(null);
+    try {
+      const result = await concealedChow(gameId, tiles, token);
+      if (result?.gameId && result.gameId !== gameId) {
+        navigate(`/game/${result.gameId}`, { replace: true });
+      } else {
+        refresh();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleConcealedKong = async (tile: Tile) => {
+    if (!gameId) return;
+    const token = await getIdToken(true);
+    if (!token) return;
+    setActing(true);
+    setError(null);
+    try {
+      const result = await concealedKong(gameId, tile, token);
+      if (result?.gameId && result.gameId !== gameId) {
+        navigate(`/game/${result.gameId}`, { replace: true });
+      } else {
+        refresh();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setActing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-4 text-muted" role="status" aria-live="polite" aria-busy="true">
@@ -286,6 +357,17 @@ export function Game() {
           </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted shrink-0">
+          {gameId && (
+            <button
+              type="button"
+              onClick={() => navigate(`/what-if/${gameId}`)}
+              className="btn-secondary text-sm py-2 px-3"
+              aria-label="Open What-if scorer"
+              title="Open What-if scorer"
+            >
+              What-if
+            </button>
+          )}
           <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
           {isEnded && (
             <span className="text-(--color-primary) font-semibold">Game over</span>
@@ -296,6 +378,7 @@ export function Game() {
       <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-h-0">
         <GameBoard
           game={game}
+          lastScoringResult={lastScoringResult}
           currentUserId={user?.uid ?? null}
           currentUserDisplayName={user?.displayName ?? null}
           error={error}
@@ -308,6 +391,9 @@ export function Game() {
           onClaimKong={handleClaimKong}
           onClaimChow={handleClaimChow}
           onPassClaim={handlePassClaim}
+          onConcealedPong={handleConcealedPong}
+          onConcealedChow={handleConcealedChow}
+          onConcealedKong={handleConcealedKong}
           mode="standard"
           onShowHandChange={async (showHand) => {
             if (!gameId) return;
