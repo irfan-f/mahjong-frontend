@@ -1,4 +1,12 @@
-import type { Lobby, Game, Tile, UserLobbySummary } from '../types';
+import type {
+  Lobby,
+  Game,
+  Tile,
+  UserLobbySummary,
+  ScoringContext,
+  ScoringResult,
+  ScoringBreakdownEntry,
+} from '../types';
 import { apiFetch } from './client';
 
 async function throwOnError(res: Response): Promise<void> {
@@ -130,13 +138,36 @@ export async function mahjong(
   gameId: string,
   token: string | null,
   scores?: Record<string, number>
-): Promise<{ gameId: string; winnerId: string }> {
+): Promise<{ gameId: string; winnerId: string; scores?: Record<string, number>; points?: number; breakdown?: ScoringBreakdownEntry[] }> {
   const res = await apiFetch(`/api/game/${gameId}/mahjong`, {
     method: 'PUT',
     body: JSON.stringify({ scores: scores ?? {} }),
     token,
   });
   await throwOnError(res);
+  return res.json();
+}
+
+export async function scoreHand(
+  context: ScoringContext,
+  token: string | null
+): Promise<ScoringResult> {
+  const res = await apiFetch('/api/scoring/score', {
+    method: 'POST',
+    body: JSON.stringify({ context }),
+    token,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const data = JSON.parse(text);
+      if (data?.error) msg = data.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -174,6 +205,48 @@ export async function passClaim(gameId: string, token: string | null): Promise<{
   const res = await apiFetch(`/api/game/${gameId}/pass`, {
     method: 'PUT',
     body: JSON.stringify({}),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function concealedPong(
+  gameId: string,
+  tiles: Tile[],
+  token: string | null
+): Promise<{ gameId: string }> {
+  const res = await apiFetch(`/api/game/${gameId}/concealedPong`, {
+    method: 'PUT',
+    body: JSON.stringify({ tiles }),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function concealedChow(
+  gameId: string,
+  tiles: Tile[],
+  token: string | null
+): Promise<{ gameId: string }> {
+  const res = await apiFetch(`/api/game/${gameId}/concealedChow`, {
+    method: 'PUT',
+    body: JSON.stringify({ tiles }),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function concealedKong(
+  gameId: string,
+  tile: Tile,
+  token: string | null
+): Promise<{ gameId: string }> {
+  const res = await apiFetch(`/api/game/${gameId}/concealedKong`, {
+    method: 'PUT',
+    body: JSON.stringify({ tile }),
     token,
   });
   await throwOnError(res);

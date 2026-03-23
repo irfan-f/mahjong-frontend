@@ -119,7 +119,18 @@ export function Learn() {
           </button>
           <span className="font-semibold text-on-surface truncate">Learn to play</span>
         </div>
-        <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/what-if')}
+            className="btn-secondary text-sm py-2 px-3"
+            aria-label="Open What-if scorer"
+            title="Open What-if scorer"
+          >
+            What-if
+          </button>
+          <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
+        </div>
       </header>
 
       <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-h-0 overflow-hidden relative">

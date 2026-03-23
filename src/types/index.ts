@@ -3,10 +3,59 @@ export type NumericTileType = 'character' | 'dot' | 'stick';
 export type WindTileValue = 'east' | 'south' | 'west' | 'north';
 export type DragonTileValue = 'red' | 'green' | 'white';
 
+export interface ScoringBreakdownEntry {
+  pattern: string;
+  points: number;
+  patternNameEn?: string;
+  patternNameZh?: string;
+}
+
+export interface ScoringResult {
+  scores: Record<string, number>;
+  points?: number;
+  breakdown?: ScoringBreakdownEntry[];
+}
+
+export interface ScoringContext {
+  winnerId: string;
+  winnerHand: Tile[];
+  winnerMelds?: PlayerMeld[];
+  playerMelds?: Record<string, PlayerMeld[]>;
+  playerDiscards?: Record<string, Tile[]>;
+  lastDiscardedTile?: Tile | null;
+  /** Compatibility for deferred callers. */
+  winnerExposedMelds?: { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[];
+  selfDraw: boolean;
+  discarderId: string | null;
+  dealerId: string;
+  playerIds: string[];
+  roundWind?: WindTileValue;
+  wonOnLastPiece: boolean;
+  flowers?: Tile[];
+}
+
 export type Tile =
   | { _type: NumericTileType; value: NumericTileValue; count: 4 }
   | { _type: 'wind'; value: WindTileValue; count: 4 }
   | { _type: 'dragon'; value: DragonTileValue; count: 4 };
+
+export type MeldType = 'pong' | 'kong' | 'chow';
+export type MeldVisibility = 'exposed' | 'concealed';
+export type MeldSource = 'discard-claim' | 'self-formed';
+
+export interface PlayerMeld {
+  meldId: string;
+  type: MeldType;
+  tiles: Tile[] | null;
+  visibility: MeldVisibility;
+  source: MeldSource;
+  claimedFromPlayerId: string | null;
+  claimedTileIndex: number | null;
+  declaredAtTurn: number;
+  faceDown: boolean;
+  /** Populated when concealed meld tiles are hidden for non-owners. */
+  tileCount?: number;
+}
 
 export interface Lobby {
   _id?: string;
@@ -33,7 +82,9 @@ export interface Game {
   playerHands?: Record<string, Tile[]>;
   /** All discards per player, in chronological order. Display grouped by player. */
   playerDiscards?: Record<string, Tile[]>;
-  /** Each player's face-up melds (Pong/Kong/Chow), shown inline per player. */
+  /** Canonical meld model for both exposed and concealed melds. */
+  playerMelds?: Record<string, PlayerMeld[]>;
+  /** Compatibility-only legacy field for deferred modules. */
   playerExposedMelds?: Record<string, { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[]>;
   turnState: {
     currentPhase: string;
@@ -55,6 +106,8 @@ export interface Game {
   status?: 'active' | 'ended';
   winnerId?: string;
   scores?: Record<string, number>;
+  points?: number;
+  breakdown?: ScoringBreakdownEntry[];
   endedAt?: string;
   /** When ended, which players have chosen to show their hand to others. */
   playerShowHand?: Record<string, boolean>;
