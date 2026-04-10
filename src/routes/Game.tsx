@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams, Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   getGame,
+  stepBot,
   rollAndDealTiles,
   drawTile,
   discardTile,
@@ -18,7 +19,7 @@ import {
 } from '../api/endpoints';
 import type { Game as GameType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { AccountMenu } from '../components/AccountMenu';
+import { PlaySessionHeader } from '../components/PlaySessionHeader';
 import { GameBoard } from '../components/game/GameBoard';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
@@ -34,55 +35,106 @@ export function Game() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [botStepCapMessage] = useState<string | null>(null);
+  const fetchSeqRef = useRef(0);
+  const actingRef = useRef(false);
+  const gameIdRef = useRef(gameId);
+  gameIdRef.current = gameId;
 
-  const refresh = () => {
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  /** Fetch the latest game state and commit it if still the freshest request. */
+  const refreshGameState = useCallback(
+    async (options?: { finishLoading?: boolean }) => {
+      if (!gameId) return;
+      const targetGameId = gameId;
+      const mySeq = ++fetchSeqRef.current;
+      const token = await getIdToken(true);
+      if (!token) {
+        if (options?.finishLoading) setLoading(false);
+        return;
+      }
+      if (mySeq !== fetchSeqRef.current) return;
+
+      let data: GameType | null;
+      try {
+        data = await getGame(targetGameId, token);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load game');
+        if (options?.finishLoading) setLoading(false);
+        return;
+      }
+      if (!data || mySeq !== fetchSeqRef.current || gameIdRef.current !== targetGameId) {
+        if (options?.finishLoading) setLoading(false);
+        return;
+      }
+
+      setGame(data);
+      if (options?.finishLoading) setLoading(false);
+    },
+    [gameId, getIdToken]
+  );
+
+  /**
+   * After a user mutation, drive bot turns one-at-a-time so each action is visible.
+   * Each step: call stepBot → refresh UI → wait BOT_STEP_DELAY ms → repeat.
+   * Stops when stepBot returns `stepped: false` (human's turn or game ended).
+   */
+  const BOT_STEP_DELAY_MS = 500;
+  const MAX_BOT_STEPS = 20;
+
+  const driveBotSteps = useCallback(async () => {
     if (!gameId) return;
-    getIdToken(true)
-      .then((token) => (token ? getGame(gameId, token) : null))
-      .then((data) => data && setGame(data))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load game'))
-      .finally(() => setLoading(false));
-  };
+    const targetGameId = gameId;
+    let stepsDriven = 0;
+    while (stepsDriven < MAX_BOT_STEPS && actingRef.current) {
+      if (gameIdRef.current !== targetGameId) break;
+      let stepped = false;
+      try {
+        const token = await getIdToken(true);
+        if (!token) break;
+        const result = await stepBot(targetGameId, token);
+        stepped = result.stepped;
+      } catch {
+        break;
+      }
+      if (!stepped) break;
+      // Show this bot action before the next step.
+      await refreshGameState();
+      await sleep(BOT_STEP_DELAY_MS);
+      stepsDriven += 1;
+    }
+    // Final refresh to make sure we're in sync after the loop.
+    await refreshGameState();
+  }, [gameId, getIdToken, refreshGameState]);
+
+  const refreshGameStateRef = useRef(refreshGameState);
+  refreshGameStateRef.current = refreshGameState;
+  const driveBotStepsRef = useRef(driveBotSteps);
+  driveBotStepsRef.current = driveBotSteps;
 
   useEffect(() => {
     if (!gameId) return;
-    let cancelled = false;
-    getIdToken(true)
-      .then((token) => {
-        if (!token || cancelled) return null;
-        return getGame(gameId, token);
-      })
-      .then((data) => {
-        if (!cancelled && data) setGame(data);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load game');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [gameId, getIdToken]);
+    setLoading(true);
+    setError(null);
+    void refreshGameStateRef.current({ finishLoading: true });
+  }, [gameId]);
 
+  // Fallback poll: while not acting, keep the UI up to date (covers reconnects etc.).
   useEffect(() => {
     if (!gameId) return;
     const interval = setInterval(() => {
-      getIdToken(true)
-        .then((token) => (token ? getGame(gameId, token) : null))
-        .then((data) => {
-          if (data) setGame(data);
-        })
-        .catch(() => {});
-    }, 2000);
+      if (actingRef.current) return;
+      void refreshGameState();
+    }, 3000);
     return () => clearInterval(interval);
-  }, [gameId, getIdToken]);
+  }, [gameId, refreshGameState]);
 
   const handleRollAndDeal = async () => {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -90,11 +142,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -103,6 +157,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -110,11 +165,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -123,6 +180,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -130,11 +188,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -143,6 +203,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -157,11 +218,12 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -170,6 +232,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -177,11 +240,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -190,6 +255,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -197,31 +263,36 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
 
-  const handleClaimChow = async () => {
+  const handleClaimChow = async (chowVariantId?: string) => {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
-      const result = await claimChow(gameId, token);
+      const result = await claimChow(gameId, token, chowVariantId);
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -230,6 +301,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -237,11 +309,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -250,6 +324,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -257,11 +332,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -270,6 +347,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -277,11 +355,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -290,6 +370,7 @@ export function Game() {
     if (!gameId) return;
     const token = await getIdToken(true);
     if (!token) return;
+    actingRef.current = true;
     setActing(true);
     setError(null);
     try {
@@ -297,11 +378,13 @@ export function Game() {
       if (result?.gameId && result.gameId !== gameId) {
         navigate(`/game/${result.gameId}`, { replace: true });
       } else {
-        refresh();
+        await refreshGameState();
+        await driveBotSteps();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   };
@@ -336,44 +419,82 @@ export function Game() {
   }
 
   const isEnded = game.status === 'ended';
+  const botTurn = Boolean(game.currentPlayer?.startsWith('ai:'));
+  const waitingOnBot = !isEnded && (acting || botTurn);
+  const isMyTurn = !isEnded && game.currentPlayer === user?.uid;
+
+  const mobileSessionStatus =
+    isEnded ? null : waitingOnBot ? (
+      <span className="inline-flex items-center gap-1 text-xs text-muted">
+        <Spinner className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Bot…
+      </span>
+    ) : isMyTurn ? (
+      <span className="text-xs font-semibold text-(--color-primary)">Your turn</span>
+    ) : (
+      <span className="text-xs text-muted">Waiting</span>
+    );
 
   return (
     <div className="h-screen flex flex-col bg-(--color-surface)">
-      <header className="app-header shrink-0 z-10 flex items-center justify-between gap-4 px-4 py-2">
-        <div className="flex items-center gap-3 min-w-0">
+      <PlaySessionHeader
+        theme={theme}
+        setTheme={setTheme}
+        onSignOut={signOut}
+        title="Game"
+        subtitle="Mahjong with Friends"
+        mobileStatus={mobileSessionStatus}
+        leading={
           <Link
             to="/"
-            className="flex items-center justify-center w-10 h-10 rounded-lg text-muted hover:text-text-primary hover:bg-surface-panel transition-colors shrink-0"
+            className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg p-1 text-muted hover:bg-surface-panel hover:text-text-primary sm:min-h-10 sm:min-w-10"
             aria-label="Back to home"
             title="Back to home"
           >
             <span className="inline-block scale-x-[-1]">
-              <Icon src={icons.forwardArrow} className="size-5 [&_.icon-svg]:size-5" />
+              <Icon src={icons.forwardArrow} className="size-4.5 sm:size-5 [&_.icon-svg]:size-4.5 sm:[&_.icon-svg]:size-5" aria-hidden />
             </span>
           </Link>
-          <div className="min-w-0">
-            <span className="font-semibold text-on-surface truncate block">Game</span>
-            <span className="text-xs text-muted truncate block">Mahjong with friends</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-muted shrink-0">
-          {gameId && (
-            <button
-              type="button"
-              onClick={() => navigate(`/what-if/${gameId}`)}
-              className="btn-secondary text-sm py-2 px-3"
-              aria-label="Open What-if scorer"
-              title="Open What-if scorer"
-            >
-              What-if
-            </button>
-          )}
-          <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
-          {isEnded && (
-            <span className="text-(--color-primary) font-semibold">Game over</span>
-          )}
-        </div>
-      </header>
+        }
+        desktopActions={
+          <>
+            {gameId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/what-if/${gameId}`)}
+                className="btn-secondary shrink-0 py-1.5 px-2.5 text-sm"
+                aria-label="Open What-if scorer"
+                title="Open What-if scorer"
+              >
+                What-if
+              </button>
+            ) : null}
+            {isEnded ? (
+              <span className="shrink-0 text-sm font-semibold text-(--color-primary)">Game over</span>
+            ) : null}
+          </>
+        }
+        mobileDrawerExtras={
+          gameId
+            ? (close) => (
+                <NavLink
+                  to={`/what-if/${gameId}`}
+                  onClick={close}
+                  className={({ isActive }) =>
+                    [
+                      'flex min-h-12 w-full items-center rounded-lg px-4 py-3 text-left text-base font-semibold transition-colors',
+                      isActive
+                        ? 'bg-secondary text-(--color-primary)'
+                        : 'text-on-surface hover:bg-surface-panel-muted',
+                    ].join(' ')
+                  }
+                >
+                  What-if (this game)
+                </NavLink>
+              )
+            : undefined
+        }
+      />
 
       <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-h-0">
         <GameBoard
@@ -383,6 +504,8 @@ export function Game() {
           currentUserDisplayName={user?.displayName ?? null}
           error={error}
           acting={acting}
+          waitingOnBot={waitingOnBot}
+          botStepCapMessage={botStepCapMessage}
           onRollAndDeal={handleRollAndDeal}
           onDraw={handleDraw}
           onDiscardTile={handleDiscard}
@@ -400,7 +523,7 @@ export function Game() {
             const token = await getIdToken(true);
             if (!token) return;
             await setShowHand(gameId, showHand, token);
-            refresh();
+            await refreshGameState();
           }}
         />
       </main>

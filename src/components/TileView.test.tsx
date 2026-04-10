@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { TileView } from './TileView';
+import { TileBackView, TileView } from './TileView';
 import type { Tile } from '../types';
 
 const dotFive: Tile = { _type: 'dot', value: 5, count: 4 };
@@ -39,5 +39,21 @@ describe('TileView', () => {
   it('disables button when disabled is true', () => {
     render(<TileView tile={dotFive} asButton disabled />);
     expect(screen.getByRole('button')).toBeDisabled();
+  });
+});
+
+describe('TileBackView', () => {
+  it('renders tile back asset', () => {
+    render(<TileBackView />);
+    const img = document.querySelector('img');
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', `${import.meta.env.BASE_URL}tiles/back.svg`);
+    expect(screen.getByRole('img', { name: 'Face-down tile' })).toBeInTheDocument();
+  });
+
+  it('can be aria-hidden for decorative stacks', () => {
+    const { container } = render(<TileBackView aria-hidden />);
+    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 });

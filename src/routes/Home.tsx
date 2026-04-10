@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { createLobby, joinLobby, userSetup, getMyLobbies, deleteLobby } from '../api/endpoints';
 import type { UserLobbySummary } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { AccountMenu } from '../components/AccountMenu';
+import { SiteHeader } from '../components/SiteHeader';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
 import { icons } from '../icons';
@@ -14,13 +13,21 @@ export function Home() {
   const { user, loading: authLoading, signIn, signInAnonymous, signOut, getIdToken } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const joinInputRef = useRef<HTMLInputElement>(null);
   const [joinId, setJoinId] = useState('');
+  const [joinExpanded, setJoinExpanded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lobbies, setLobbies] = useState<UserLobbySummary[]>([]);
   const [lobbiesLoading, setLobbiesLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!joinExpanded) return;
+    const id = requestAnimationFrame(() => joinInputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [joinExpanded]);
 
   const handleCreateLobby = async () => {
     const token = await getIdToken(true);
@@ -71,6 +78,12 @@ export function Home() {
     }
   };
 
+  const collapseJoin = () => {
+    setJoinExpanded(false);
+    setJoinId('');
+    setError(null);
+  };
+
   useEffect(() => {
     if (!user) {
       setLobbies([]);
@@ -97,10 +110,7 @@ export function Home() {
   if (authLoading) {
     return (
       <div className="h-screen flex flex-col bg-(--color-surface)">
-        <header className="app-header shrink-0 px-4 py-3 flex items-center justify-between">
-          <h1 className="brand-title text-xl">Mahjong with friends</h1>
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </header>
+        <SiteHeader theme={theme} setTheme={setTheme} />
         <main
           id="main-content"
           tabIndex={-1}
@@ -115,20 +125,17 @@ export function Home() {
   if (!user) {
     return (
       <div className="h-screen flex flex-col bg-(--color-surface)">
-        <header className="app-header shrink-0 px-4 py-3 flex items-center justify-between">
-          <h1 className="brand-title text-xl">Mahjong with friends</h1>
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-        </header>
+        <SiteHeader theme={theme} setTheme={setTheme} />
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 min-h-0 flex flex-col items-center justify-center p-4 max-w-md mx-auto w-full gap-6"
+          className="flex-1 min-h-0 flex flex-col items-center justify-center p-3 sm:p-4 max-w-md mx-auto w-full gap-4 sm:gap-6"
         >
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-on-surface">Welcome</h2>
-            <p className="text-muted text-sm">Sign in to create a game or join one with a code.</p>
+          <div className="text-center space-y-1.5 sm:space-y-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-on-surface">Welcome</h2>
+            <p className="text-muted text-sm">Sign in to create a game or join with a code.</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
             <button
               onClick={signIn}
               className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
@@ -152,82 +159,119 @@ export function Home() {
 
   return (
     <div className="h-screen flex flex-col bg-(--color-surface)">
-      <header className="app-header shrink-0 flex items-center justify-between px-4 py-3">
-        <h1 className="brand-title text-lg truncate">Mahjong with friends</h1>
-        <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
-      </header>
+      <SiteHeader theme={theme} setTheme={setTheme} onSignOut={signOut} />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 overflow-auto p-4 max-w-md mx-auto w-full flex flex-col gap-5">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-4 max-w-md mx-auto w-full gap-2 sm:gap-4"
+      >
         {error && (
-          <div className="panel px-4 py-3 text-danger text-sm rounded-xl" role="alert">
+          <div className="panel px-3 py-2.5 sm:px-4 sm:py-3 text-danger text-sm rounded-xl shrink-0" role="alert">
             {error}
           </div>
         )}
 
-        <section className="panel p-4 rounded-xl flex flex-col gap-3" aria-labelledby="play-heading">
-          <h2 id="play-heading" className="text-base font-semibold text-on-surface">Play with friends</h2>
-          <button
-            onClick={handleCreateLobby}
-            disabled={creating}
-            className="btn-primary w-full py-3 inline-flex items-center justify-center gap-2"
-            aria-label={creating ? 'Creating game' : 'Create game'}
-          >
-            {creating && <Spinner />}
-            {creating ? 'Creating…' : 'Create new game'}
-          </button>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <label htmlFor="lobby-code" className="sr-only">
-              Lobby code
-            </label>
-            <input
-              id="lobby-code"
-              type="text"
-              value={joinId}
-              onChange={(e) => setJoinId(e.target.value)}
-              placeholder="Lobby code"
-              autoComplete="off"
-              className="flex-1 border border-border rounded-lg px-3 py-2.5 bg-(--color-surface) text-on-surface min-h-[44px] text-sm placeholder:text-muted focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-1"
-              aria-label="Lobby code"
-              aria-invalid={error ? 'true' : undefined}
-            />
+        <section
+          className="panel p-3 sm:p-4 rounded-xl flex flex-col gap-3 sm:gap-4 shrink-0"
+          aria-labelledby="play-heading"
+        >
+          <h2 id="play-heading" className="sr-only">
+            Play
+          </h2>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
             <button
-              onClick={handleJoinLobby}
-              disabled={joining || !joinId.trim()}
-              className="btn-secondary shrink-0 inline-flex items-center justify-center gap-2 min-h-[44px]"
-              aria-label={joining ? 'Joining game' : 'Join game'}
+              onClick={handleCreateLobby}
+              disabled={creating}
+              className="btn-primary flex-1 py-3 inline-flex items-center justify-center gap-2"
+              aria-label={creating ? 'Creating game' : 'Create game'}
             >
-              {joining && <Spinner />}
-              Join game
+              {creating && <Spinner />}
+              {creating ? 'Creating…' : 'Create new game'}
             </button>
+
+            {!joinExpanded ? (
+              <button
+                type="button"
+                onClick={() => setJoinExpanded(true)}
+                className="btn-secondary flex-1 py-3"
+                aria-expanded={joinExpanded}
+                aria-controls="join-lobby-panel"
+              >
+                Join game
+              </button>
+            ) : null}
           </div>
+
+          {joinExpanded ? (
+            <div
+              id="join-lobby-panel"
+              className="flex flex-col gap-2 pt-2 sm:pt-3 mt-1 border-t border-border"
+              role="region"
+              aria-label="Join with lobby code"
+            >
+              <label htmlFor="lobby-code" className="text-sm font-medium text-on-surface">
+                Lobby code
+              </label>
+              <div className="flex min-h-[44px] flex-col gap-2 sm:flex-row sm:flex-nowrap sm:items-stretch">
+                <input
+                  ref={joinInputRef}
+                  id="lobby-code"
+                  type="text"
+                  value={joinId}
+                  onChange={(e) => setJoinId(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && joinId.trim() && !joining) {
+                      e.preventDefault();
+                      void handleJoinLobby();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      collapseJoin();
+                    }
+                  }}
+                  placeholder="Paste or type the code"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-(--color-surface) px-3 py-2.5 text-sm text-on-surface placeholder:text-muted focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-1"
+                  aria-invalid={error ? 'true' : undefined}
+                />
+                <button
+                  type="button"
+                  onClick={handleJoinLobby}
+                  disabled={joining || !joinId.trim()}
+                  className="btn-primary inline-flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 px-4 py-2 sm:w-auto sm:self-stretch"
+                  aria-label={joining ? 'Joining game' : 'Join game with this code'}
+                >
+                  {joining && <Spinner />}
+                  Join
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
 
-        <section className="panel p-3 rounded-xl flex flex-row items-center justify-between gap-3" aria-labelledby="learn-heading">
-          <div className="min-w-0">
-            <h2 id="learn-heading" className="text-sm font-semibold text-on-surface">Learn to play</h2>
-            <p className="text-muted text-xs mt-0.5">Single-player tutorial</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/learn')}
-            className="btn-secondary shrink-0 text-sm py-2.5 px-4 min-h-[44px]"
-            aria-label="Open learn to play tutorial"
-          >
-            Open tutorial
-          </button>
-        </section>
+        <section
+          className={`panel flex flex-col gap-2 rounded-xl p-3 sm:p-4 ${lobbies.length > 0 ? 'min-h-0 flex-1' : 'shrink-0'}`}
+          aria-labelledby="your-games-heading"
+        >
+          <h2 id="your-games-heading" className="text-sm sm:text-base font-semibold text-on-surface">
+            Your games
+          </h2>
+          {!lobbiesLoading && lobbies.length > 0 ? (
+            <p className="text-muted text-xs sm:text-sm">Recently opened.</p>
+          ) : null}
 
-        <section className="panel p-3 rounded-xl" aria-labelledby="your-games-heading">
-            <h2 id="your-games-heading" className="text-sm font-semibold text-muted mb-2">Your games</h2>
-            {lobbiesLoading ? (
-              <p className="text-muted text-sm inline-flex items-center gap-2">
-                <Spinner className="w-4 h-4" aria-hidden />
-                Loading…
-              </p>
-            ) : lobbies.length === 0 ? (
-              <p className="text-muted text-sm">No games yet. Create one or join with a code above.</p>
-            ) : (
-            <ul className="space-y-1.5">
+          {lobbiesLoading ? (
+            <p className="text-muted text-sm inline-flex items-center gap-2">
+              <Spinner className="w-4 h-4" aria-hidden />
+              Fetching your lobbies…
+            </p>
+          ) : lobbies.length === 0 ? (
+            <p className="text-muted text-sm leading-snug">
+              No recent lobbies. Create one above or join with a code.
+            </p>
+          ) : (
+            <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
               {lobbies.map((l) => (
                 <li key={l.lobbyId} className="flex items-center gap-2 group">
                   {l.currentGameId ? (
@@ -265,7 +309,7 @@ export function Home() {
                 </li>
               ))}
             </ul>
-            )}
+          )}
         </section>
       </main>
     </div>

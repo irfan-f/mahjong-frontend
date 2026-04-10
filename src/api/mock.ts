@@ -1,4 +1,10 @@
-import type { Game, Lobby, Tile, UserLobbySummary, PlayerMeld, MeldType } from '../types';
+import type { Game, Lobby, Tile, UserLobbySummary } from '../types';
+import {
+  getNarrativeAugment,
+  getNarrativeSuggestedDiscard,
+  TN_MY_HAND_FULL,
+  TN_OPPONENT_PLACEHOLDER,
+} from '../tutorial/narrative';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -31,31 +37,6 @@ const opponentHand: Tile[] = [
   tile('dragon', 'green'),
 ];
 
-const c1 = tile('character', 1);
-const c2 = tile('character', 2);
-const c3 = tile('character', 3);
-const d4 = tile('dot', 4);
-const d5 = tile('dot', 5);
-const d6 = tile('dot', 6);
-const d7 = tile('dot', 7);
-const d8 = tile('dot', 8);
-const east = tile('wind', 'east');
-const s1 = tile('stick', 1);
-const s2 = tile('stick', 2);
-
-const tutorialStartHand: Tile[] = [c1, c2, c3, d4, d4, d5, d5, d6, d7, east, east, east, s1, s2];
-
-/** First player has 13 tiles and must draw; this is the hand before that draw. */
-const tutorialHandBeforeFirstDraw: Tile[] = [c1, c2, c3, d4, d4, d5, d5, d6, d7, east, east, east, s2];
-
-const tutorialHandAfterFirstDiscard: Tile[] = [c1, c2, c3, d4, d4, d5, d5, d6, d7, east, east, east, s2];
-
-const tutorialHandAfterPong: Tile[] = [c1, c2, c3, d4, d4, d6, d7, east, east, east, s2];
-
-const tutorialHandAfterPongDiscard: Tile[] = [c1, c2, c3, d4, d4, d6, d7, east, east, east];
-
-const tutorialHandDrawThenWin: Tile[] = [c1, c2, c3, d4, d4, d6, d7, d8];
-
 const winningHand: Tile[] = [
   tile('character', 1),
   tile('character', 2),
@@ -84,20 +65,6 @@ const baseTurnState = {
   tileDiscarded: false,
 };
 
-function tutorialMeld(type: MeldType, tiles: Tile[], declaredAtTurn: number, claimedFromPlayerId: string | null): PlayerMeld {
-  return {
-    meldId: `tutorial-${type}-${declaredAtTurn}-${String(tiles[0]?._type)}-${String(tiles[0]?.value)}`,
-    type,
-    tiles,
-    visibility: 'exposed',
-    source: 'discard-claim',
-    claimedFromPlayerId,
-    claimedTileIndex: tiles.length - 1,
-    declaredAtTurn,
-    faceDown: false,
-  };
-}
-
 export const mockLobby: Lobby = {
   players: { [p1]: true, [p2]: true, [p3]: true, [me]: true },
 };
@@ -117,16 +84,18 @@ function getTutorialBaseGame(): Game {
     startingPlayer: me,
     playerDisplayNames: mockPlayerDisplayNames,
     playerHands: {
-      [p1]: opponentHand,
-      [p2]: opponentHand,
-      [p3]: opponentHand,
-      [me]: tutorialStartHand,
+      [p1]: TN_OPPONENT_PLACEHOLDER,
+      [p2]: TN_OPPONENT_PLACEHOLDER,
+      [p3]: TN_OPPONENT_PLACEHOLDER,
+      [me]: TN_MY_HAND_FULL,
     },
     playerDiscards: {},
     playerMelds: {},
     currentPlayer: me,
     lastDiscardedTile: null,
     tilesLeft: 82,
+    wallDiceTotal: 7,
+    wallTotalTiles: 136,
     initialization: {
       playersReady: true,
       playerOrderDecided: true,
@@ -144,191 +113,6 @@ function getTutorialBaseGame(): Game {
     },
     private: { playerHands: {}, potentialActions: {} },
   };
-}
-
-type TutorialStepId = string;
-
-function getTutorialAugment(stepId: TutorialStepId): Partial<Game> | null {
-  const bobChow = tutorialMeld('chow', [tile('dot', 2), tile('dot', 3), tile('dot', 4)], 3, p1);
-  const myPong = tutorialMeld('pong', [d5, d5, d5], 4, p2);
-  const myKong = tutorialMeld('kong', [d4, d4, d4, d4], 7, p2);
-  const myMelds = [myPong, myKong];
-
-  switch (stepId) {
-    case 'first-draw':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand,
-          [p3]: opponentHand,
-          [me]: tutorialHandBeforeFirstDraw,
-        },
-        turnState: {
-          currentPhase: 'playing',
-          playerTurn: me,
-          turn_number: 1,
-          tileDrawn: false,
-          tilesPlaced: false,
-          tileDiscarded: false,
-        },
-        private: { playerHands: {}, potentialActions: {} },
-      };
-    case 'first-discard':
-      return {};
-    case 'watch-alice-turn':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand,
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterFirstDiscard,
-        },
-        playerDiscards: { [me]: [s1] },
-        currentPlayer: p1,
-        lastDiscardedTile: s1,
-        turnState: { currentPhase: 'playing', playerTurn: p1, turn_number: 2, tileDrawn: false, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: {} },
-      };
-    case 'watch-alice-discarded':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand,
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterFirstDiscard,
-        },
-        playerDiscards: {
-          [me]: [s1],
-          [p1]: [tile('dot', 3)],
-        },
-        currentPlayer: p2,
-        lastDiscardedTile: tile('dot', 3),
-        turnState: { currentPhase: 'playing', playerTurn: p2, turn_number: 2, tileDrawn: false, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: {} },
-      };
-    case 'watch-bob-chow-done':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterFirstDiscard,
-        },
-        playerDiscards: {
-          [me]: [s1],
-          [p1]: [],
-          [p2]: [d5],
-        },
-        playerMelds: { [p2]: [bobChow] },
-        currentPlayer: p3,
-        lastDiscardedTile: d5,
-        turnState: { currentPhase: 'playing', playerTurn: p3, turn_number: 3, tileDrawn: true, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: { [me]: ['pong'] } },
-      };
-    case 'my-discard-after-pong':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterPong,
-        },
-        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
-        playerDiscards: {
-          [me]: [s1],
-          [p1]: [],
-          [p2]: [],
-          [p3]: [],
-        },
-        currentPlayer: me,
-        lastDiscardedTile: null,
-        turnState: { currentPhase: 'playing', playerTurn: me, turn_number: 4, tileDrawn: true, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: {} },
-      };
-    case 'watch-alice-turn-after-pong':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterPongDiscard,
-        },
-        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
-        playerDiscards: {
-          [me]: [s1, s2],
-          [p1]: [tile('stick', 9)],
-          [p2]: [],
-          [p3]: [],
-        },
-        currentPlayer: p2,
-        lastDiscardedTile: tile('stick', 9),
-        turnState: { currentPhase: 'playing', playerTurn: p2, turn_number: 5, tileDrawn: false, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: {} },
-      };
-    case 'my-kong':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandAfterPongDiscard,
-        },
-        playerMelds: { [p2]: [bobChow], [me]: [myPong] },
-        playerDiscards: {
-          [me]: [s1, s2],
-          [p1]: [],
-          [p2]: [d4],
-          [p3]: [],
-        },
-        currentPlayer: p3,
-        lastDiscardedTile: d4,
-        turnState: { currentPhase: 'playing', playerTurn: p3, turn_number: 6, tileDrawn: true, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: { [me]: ['kong'] } },
-      };
-    case 'draw-then-win':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandDrawThenWin,
-        },
-        playerMelds: { [p2]: [bobChow], [me]: myMelds },
-        playerDiscards: {
-          [me]: [s1, s2],
-          [p1]: [],
-          [p2]: [d4],
-          [p3]: [],
-        },
-        currentPlayer: me,
-        lastDiscardedTile: null,
-        turnState: { currentPhase: 'playing', playerTurn: me, turn_number: 7, tileDrawn: true, tilesPlaced: false, tileDiscarded: false },
-        private: { playerHands: {}, potentialActions: { [me]: ['mahjong'] } },
-      };
-    case 'finished':
-      return {
-        playerHands: {
-          [p1]: opponentHand,
-          [p2]: opponentHand.slice(0, 10),
-          [p3]: opponentHand,
-          [me]: tutorialHandDrawThenWin,
-        },
-        playerMelds: { [p2]: [bobChow], [me]: myMelds },
-        playerDiscards: {
-          [me]: [s1, s2],
-          [p1]: [],
-          [p2]: [d4],
-          [p3]: [],
-        },
-        currentPlayer: me,
-        lastDiscardedTile: null,
-        status: 'ended',
-        winnerId: me,
-        scores: { [me]: 20, [p1]: 0, [p2]: 0, [p3]: 0 },
-      };
-    default:
-      return null;
-  }
 }
 
 function getTutorialPreDealGame(): Game {
@@ -355,20 +139,18 @@ function getTutorialPreDealGame(): Game {
   };
 }
 
-export function getTutorialGameForStep(stepId: TutorialStepId): Game | null {
+export function getTutorialGameForStep(stepId: string): Game | null {
   if (stepId === 'intro') return null;
   if (stepId === 'pre-deal') return getTutorialPreDealGame();
   const base = getTutorialBaseGame();
-  const augment = getTutorialAugment(stepId);
+  const augment = getNarrativeAugment(stepId);
   if (augment == null) return base;
   return { ...base, ...augment };
 }
 
 /** For discard steps, the single tile the tutorial expects the user to discard. */
-export function getTutorialSuggestedDiscard(stepId: TutorialStepId): Tile | null {
-  if (stepId === 'first-discard') return s1;
-  if (stepId === 'my-discard-after-pong') return s2;
-  return null;
+export function getTutorialSuggestedDiscard(stepId: string): Tile | null {
+  return getNarrativeSuggestedDiscard(stepId);
 }
 
 export function getMockGame(gameId: string): Game {
@@ -389,6 +171,8 @@ export function getMockGame(gameId: string): Game {
     currentPlayer: me,
     lastDiscardedTile: null as Tile | null,
     tilesLeft: 82,
+    wallDiceTotal: 7,
+    wallTotalTiles: 136,
     initialization: {
       playersReady: true,
       playerOrderDecided: true,

@@ -30,7 +30,7 @@ export function ThemeToggle({
   theme: Theme;
   setTheme: (t: Theme) => void;
   className?: string;
-  variant?: 'icon' | 'menu';
+  variant?: 'icon' | 'menu' | 'inline';
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -48,6 +48,33 @@ export function ThemeToggle({
   );
 
   const isMenu = variant === 'menu';
+
+  if (variant === 'inline') {
+    return (
+      <div
+        role="radiogroup"
+        aria-label="Theme"
+        className={`flex rounded-lg border border-border p-0.5 bg-(--color-surface) gap-0.5 ${className ?? ''}`}
+      >
+        {(['light', 'dark', 'system'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="radio"
+            aria-checked={theme === t}
+            onClick={() => setTheme(t)}
+            className={`flex-1 rounded-md px-1.5 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+              theme === t
+                ? 'bg-(--color-secondary) text-(--color-primary)'
+                : 'text-muted hover:text-on-surface'
+            }`}
+          >
+            {LABELS[t]}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className={`relative ${className ?? ''}`}>

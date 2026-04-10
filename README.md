@@ -15,7 +15,7 @@ cp .env.example .env
 npm run dev
 ```
 
-App runs at `http://localhost:5173` (or Vite default). Ensure the backend is running and `VITE_API_URL` points to it.
+App runs at `http://localhost:3001`. Ensure the backend is running and `VITE_API_URL` points to it.
 
 ## Environment variables
 
@@ -46,6 +46,8 @@ See `.env.example`. Do not commit `.env`.
 - `/lobby/:id` — Lobby room (join, start game when 4 players)
 - `/game/:gameId` — Game table (draw, discard, declare Mahjong)
 - `/learn` — Guided single-player tutorial using scripted mock game states
+- `/what-if` — Explore a what-if analyzer / sandbox
+- `/what-if/:gameId` — What-if view for an existing game
 
 ## Stack
 
@@ -53,4 +55,9 @@ See `.env.example`. Do not commit `.env`.
 - Vite 6, TypeScript
 - Tailwind CSS 4
 - Firebase Auth (sign-in; ID token sent to backend as Bearer)
+
+## Deployment notes (GitHub Pages)
+
+- This app uses `HashRouter` for GitHub Pages compatibility.
+- Vite `base` is set to `/mahjong-frontend/` in production builds (see `vite.config.ts`), so it should be deployed under that path.
 

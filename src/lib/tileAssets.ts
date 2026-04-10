@@ -2,6 +2,11 @@ import type { Tile } from '../types';
 
 const BASE = import.meta.env.BASE_URL;
 
+/** Face-down tile art; same dimensions and frame style as other `public/tiles/*.svg` assets. */
+export function tileBackAssetPath(): string {
+  return `${BASE}tiles/back.svg`;
+}
+
 /**
  * Asset path for a tile. Backend uses "stick"; assets use "bamboo" (same suit).
  * Uses BASE_URL so tiles work under Vite dev and under GitHub Pages (base /mahjong-frontend/).

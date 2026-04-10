@@ -1,5 +1,60 @@
 import type { Tile } from '../types';
-import { tileToAssetPath, tileToLabel } from '../lib/tileAssets';
+import { tileBackAssetPath, tileToAssetPath, tileToLabel } from '../lib/tileAssets';
+
+export interface TileBackViewProps {
+  className?: string;
+  'aria-label'?: string;
+  title?: string;
+  'aria-hidden'?: boolean;
+}
+
+/** Renders the shared mahjong tile back SVG (concealed / face-down). */
+export function TileBackView({
+  className = 'h-12 w-9',
+  'aria-label': ariaLabel = 'Face-down tile',
+  title: titleProp,
+  'aria-hidden': ariaHidden,
+}: TileBackViewProps) {
+  const src = tileBackAssetPath();
+  const effectiveTitle = titleProp ?? (ariaHidden ? undefined : ariaLabel);
+
+  const tileFace =
+    'rounded-md bg-white border border-gray-300/90 shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]';
+
+  const content = (
+    <span className="relative h-full w-full flex items-center justify-center p-0.5">
+      <img
+        src={src}
+        alt=""
+        className="h-full w-full object-contain"
+        loading="lazy"
+        onError={(e) => {
+          const target = e.currentTarget;
+          target.style.display = 'none';
+          const fallback = target.nextElementSibling;
+          if (fallback instanceof HTMLElement) fallback.style.display = 'flex';
+        }}
+      />
+      <span
+        className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted p-1"
+        style={{ display: 'none' }}
+        aria-hidden
+      >
+        ?
+      </span>
+    </span>
+  );
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center overflow-hidden ${tileFace} ${className}`}
+      title={effectiveTitle}
+      {...(ariaHidden ? { 'aria-hidden': true } : { 'aria-label': ariaLabel, role: 'img' })}
+    >
+      {content}
+    </span>
+  );
+}
 
 export interface TileViewProps {
   tile: Tile;
@@ -31,7 +86,7 @@ export function TileView({
   const effectiveAriaLabel = ariaLabel ?? label;
 
   const content = (
-    <span className="relative inline-block h-full w-full flex items-center justify-center p-0.5">
+    <span className="relative h-full w-full flex items-center justify-center p-0.5">
       <img
         src={src}
         alt=""
@@ -68,8 +123,10 @@ export function TileView({
         disabled={disabled}
         aria-label={effectiveAriaLabel}
         title={effectiveTitle}
-        className={`cursor-pointer inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-all duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring-focus)] focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
-          selected ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)] ring-offset-1' : ''
+        className={`cursor-pointer inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-all duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
+          selected
+            ? 'border-2 border-(--color-primary) ring-2 ring-(--color-primary)/55 ring-offset-1'
+            : ''
         }`}
       >
         {content}
