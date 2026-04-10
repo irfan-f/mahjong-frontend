@@ -113,7 +113,10 @@ export function TileView({
     'rounded-md bg-white border border-gray-300/90 shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]';
 
   const tileButtonHover =
-    'hover:border-gray-400 hover:shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] active:scale-[0.98]';
+    'hover:border-gray-500 hover:shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] active:scale-[0.98]';
+
+  const selectedLift =
+    'relative z-10 -translate-y-1.5 border-[3px] border-(--color-ring-focus) shadow-[0_10px_22px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] sm:-translate-y-2';
 
   if (asButton) {
     return (
@@ -123,10 +126,9 @@ export function TileView({
         disabled={disabled}
         aria-label={effectiveAriaLabel}
         title={effectiveTitle}
-        className={`cursor-pointer inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-all duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
-          selected
-            ? 'border-2 border-(--color-primary) ring-2 ring-(--color-primary)/55 ring-offset-1'
-            : ''
+        aria-pressed={selected ? true : undefined}
+        className={`cursor-pointer inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-[transform,box-shadow,border-color] duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
+          selected ? selectedLift : ''
         }`}
       >
         {content}
