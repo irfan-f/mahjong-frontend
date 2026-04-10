@@ -47,6 +47,11 @@ import { AllTilesButton, TilePopover } from './ExpandableTileOverlay';
 import { Icon } from '../Icon';
 import { icons } from '../../icons';
 
+const EMPTY_HAND: Tile[] = [];
+const EMPTY_MELODS: PlayerMeld[] = [];
+const EMPTY_DISCARDS: Tile[] = [];
+const EMPTY_LEGAL: LegalAction[] = [];
+
 function formatChowMeldShort(meld: Tile[]): string {
   return meld.map((t) => tileToLabel(t)).join('–');
 }
@@ -283,9 +288,18 @@ export function GameBoard({
   const isEnded = game.status === 'ended';
 
   const isMyTurn = game.currentPlayer === currentUserId;
-  const myHand = game.playerHands?.[currentUserId ?? ''] ?? [];
-  const myMelds = game.playerMelds?.[currentUserId ?? ''] ?? [];
-  const myDiscards = game.playerDiscards?.[currentUserId ?? ''] ?? [];
+  const myHand = useMemo((): Tile[] => {
+    const h = game.playerHands?.[currentUserId ?? ''];
+    return h ?? EMPTY_HAND;
+  }, [game.playerHands, currentUserId]);
+  const myMelds = useMemo((): PlayerMeld[] => {
+    const m = game.playerMelds?.[currentUserId ?? ''];
+    return m ?? EMPTY_MELODS;
+  }, [game.playerMelds, currentUserId]);
+  const myDiscards = useMemo((): Tile[] => {
+    const d = game.playerDiscards?.[currentUserId ?? ''];
+    return d ?? EMPTY_DISCARDS;
+  }, [game.playerDiscards, currentUserId]);
   const myMeldPreviewSplit = useMemo(
     () => partitionMeldsForPreview(myMelds, MAX_PREVIEW_TILES),
     [myMelds],
@@ -299,13 +313,15 @@ export function GameBoard({
   const isTutorial = mode === 'tutorial' && tutorialAllowedActions != null;
   const legalActionsRoot = game.private?.legalActions;
   const useStructuredLegal = !isTutorial && legalActionsRoot != null;
-  const myLegal: LegalAction[] = useStructuredLegal
-    ? (legalActionsRoot[currentUserId ?? ''] ?? [])
-    : [];
+  const myLegal = useMemo((): LegalAction[] => {
+    if (!useStructuredLegal) return EMPTY_LEGAL;
+    return legalActionsRoot[currentUserId ?? ''] ?? EMPTY_LEGAL;
+  }, [useStructuredLegal, legalActionsRoot, currentUserId]);
 
-  const chowClaimActions = useStructuredLegal
-    ? myLegal.filter((a): a is Extract<LegalAction, { kind: 'claimChow' }> => a.kind === 'claimChow')
-    : [];
+  const chowClaimActions = useMemo(
+    () => myLegal.filter((a): a is Extract<LegalAction, { kind: 'claimChow' }> => a.kind === 'claimChow'),
+    [myLegal],
+  );
 
   const canClaimPong = isTutorial
     ? Boolean(tutorialAllowedActions.canClaimPong)
@@ -475,13 +491,12 @@ export function GameBoard({
     setMobileWallOpen((o) => !o);
   }, []);
 
-  const myHandSignature = useMemo(() => myHand.map(tileIdentity).join('|'), [myHand]);
   const [handOrder, setHandOrder] = useState<string[]>(() => makeHandTokens(myHand));
   const orderedHandIndices = useMemo(() => resolveOrderToIndices(myHand, handOrder), [myHand, handOrder]);
 
   useEffect(() => {
     setHandOrder((prev) => reconcileOrder(prev, myHand));
-  }, [myHandSignature]);
+  }, [myHand]);
 
   useEffect(() => {
     if (!init.tilesDealt) setMobileWallOpen(false);

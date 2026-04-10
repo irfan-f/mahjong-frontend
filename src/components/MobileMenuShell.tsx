@@ -30,10 +30,10 @@ export function MobileMenuShell({ open, onClose, titleId, children }: MobileMenu
 
   return (
     <>
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <div
-        className="fixed inset-0 z-40 bg-black/40"
-        aria-hidden
+      <button
+        type="button"
+        className="fixed inset-0 z-40 cursor-default border-0 bg-black/40 p-0"
+        aria-label="Close menu"
         onClick={onClose}
       />
       <div
