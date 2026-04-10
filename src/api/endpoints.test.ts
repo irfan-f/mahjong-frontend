@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { concealedChow, concealedKong, concealedPong } from './endpoints';
+import { claimChow, concealedChow, concealedKong, concealedPong } from './endpoints';
 import type { Tile } from '../types';
 
 const okResponse = new Response(JSON.stringify({ gameId: 'g1' }), {
@@ -42,6 +42,24 @@ describe('concealed action endpoints', () => {
     expect(url).toContain('/api/game/g1/concealedChow');
     expect(init.method).toBe('PUT');
     expect(init.body).toBe(JSON.stringify({ tiles }));
+  });
+
+  it('calls claimChow with optional chowVariantId in body', async () => {
+    const ok = () =>
+      new Response(JSON.stringify({ gameId: 'g1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    fetchMock.mockResolvedValueOnce(ok());
+    await claimChow('g1', 'token-1', 'chow:character:3-4-5');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ chowVariantId: 'chow:character:3-4-5' });
+
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValueOnce(ok());
+    await claimChow('g1', 'token-1');
+    const [, init2] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init2.body as string)).toEqual({});
   });
 
   it('calls concealedKong with tile payload', async () => {

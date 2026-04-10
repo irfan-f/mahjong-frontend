@@ -1,16 +1,107 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../hooks/useTheme';
-import { AccountMenu } from '../components/AccountMenu';
+import { SiteHeader } from '../components/SiteHeader';
 import { GameBoard } from '../components/game/GameBoard';
-import { Icon } from '../components/Icon';
-import { icons } from '../icons';
 import { useTutorialGame } from '../tutorial/useTutorialGame';
-import { getTutorialAnchor } from '../tutorial/tutorialSteps';
+import { getTutorialAnchor, tutorialSteps, type TutorialAnchor } from '../tutorial/tutorialSteps';
 import { MOCK_USER_ID } from '../api/mock';
 
-const TUTORIAL_BOX_GAP = 8;
+const TUTORIAL_BOX_GAP = 14;
+const TUTORIAL_BOX_MARGIN = 10;
+
+type TutorialSlideEdge = 'top' | 'right' | 'bottom' | 'left';
+
+function verticalRangesOverlap(aTop: number, aBottom: number, bTop: number, bBottom: number): boolean {
+  return aTop < bBottom && aBottom > bTop;
+}
+
+function computeTutorialInfoboxPosition(
+  mainEl: HTMLElement,
+  anchorEl: HTMLElement,
+  boxEl: HTMLElement,
+  _anchor: TutorialAnchor | null,
+): { top: number; left: number } {
+  const mainRect = mainEl.getBoundingClientRect();
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const boxRect = boxEl.getBoundingClientRect();
+  const boxH = boxRect.height;
+  const boxW = boxRect.width;
+
+  const anchorTop = anchorRect.top - mainRect.top;
+  const anchorBottom = anchorRect.bottom - mainRect.top;
+  const maxTop = mainRect.height - boxH - TUTORIAL_BOX_MARGIN;
+
+  const overlapsAnchorY = (t: number) =>
+    verticalRangesOverlap(t, t + boxH, anchorTop, anchorBottom);
+
+  let top = anchorTop - boxH - TUTORIAL_BOX_GAP;
+  if (top < TUTORIAL_BOX_MARGIN) {
+    top = anchorBottom + TUTORIAL_BOX_GAP;
+  }
+
+  if (overlapsAnchorY(top)) {
+    top = anchorTop - boxH - TUTORIAL_BOX_GAP;
+  }
+  if (overlapsAnchorY(top)) {
+    top = anchorBottom + TUTORIAL_BOX_GAP;
+  }
+
+  top = Math.max(TUTORIAL_BOX_MARGIN, Math.min(top, maxTop));
+
+  if (overlapsAnchorY(top)) {
+    const above = anchorTop - boxH - TUTORIAL_BOX_GAP;
+    top = Math.max(TUTORIAL_BOX_MARGIN, Math.min(above, maxTop));
+  }
+
+  let left = anchorRect.left - mainRect.left + anchorRect.width / 2;
+  const halfW = boxW / 2;
+  const minLeft = halfW + TUTORIAL_BOX_MARGIN;
+  const maxLeft = mainRect.width - halfW - TUTORIAL_BOX_MARGIN;
+  left = Math.max(minLeft, Math.min(maxLeft, left));
+
+  return { top, left };
+}
+
+function nearestEdgeForInfobox(
+  mainEl: HTMLElement,
+  boxTopLeft: { top: number; left: number },
+  boxEl: HTMLElement,
+): TutorialSlideEdge {
+  const mainRect = mainEl.getBoundingClientRect();
+  const boxRect = boxEl.getBoundingClientRect();
+  const boxH = boxRect.height;
+  const boxW = boxRect.width;
+  const top = boxTopLeft.top;
+  const left = boxTopLeft.left;
+  const mainH = mainRect.height;
+  const mainW = mainRect.width;
+  const cy = top + boxH / 2;
+  const cx = left;
+  const dTop = cy;
+  const dBottom = mainH - cy;
+  const dLeft = cx - boxW / 2;
+  const dRight = mainW - cx - boxW / 2;
+  const pairs: [TutorialSlideEdge, number][] = [
+    ['top', dTop],
+    ['right', dRight],
+    ['bottom', dBottom],
+    ['left', dLeft],
+  ];
+  pairs.sort((a, b) => a[1] - b[1]);
+  return pairs[0]![0];
+}
+
+function isSlideOutAnimationName(name: string): boolean {
+  return (
+    name === 'tutorial-slide-out-to-top' ||
+    name === 'tutorial-slide-out-to-bottom' ||
+    name === 'tutorial-slide-out-to-left' ||
+    name === 'tutorial-slide-out-to-right' ||
+    name === 'tutorial-slide-fade-out'
+  );
+}
 
 export function Learn() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -45,52 +136,107 @@ export function Learn() {
   const hasNoAction = !Object.values(step.allowedActions).some(Boolean);
   const showContinue = hasNoAction && stepIndex < totalSteps - 1;
 
-  const mainRef = useRef<HTMLElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [boxPosition, setBoxPosition] = useState<{ top: number; left: number } | null>(null);
-  const anchor = getTutorialAnchor(step);
+  const [displayIndex, setDisplayIndex] = useState(stepIndex);
+  const [slidePhase, setSlidePhase] = useState<'in' | 'out'>('in');
+  const [slideEdge, setSlideEdge] = useState<TutorialSlideEdge>('right');
+  const [exitEdge, setExitEdge] = useState<TutorialSlideEdge>('right');
+
+  const pendingContinueRef = useRef(false);
+  const stepIndexRef = useRef(stepIndex);
+  const slidePhaseRef = useRef(slidePhase);
 
   useLayoutEffect(() => {
+    stepIndexRef.current = stepIndex;
+    slidePhaseRef.current = slidePhase;
+  }, [stepIndex, slidePhase]);
+
+  const displayStep = tutorialSteps[displayIndex] ?? tutorialSteps[0]!;
+  const positionAnchor = getTutorialAnchor(displayStep);
+
+  const pageRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [boxPosition, setBoxPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (slidePhase === 'out') return;
     let next: { top: number; left: number } | null = null;
-    if (anchor && game && mainRef.current && boxRef.current) {
-      const main = mainRef.current;
-      const el = main.querySelector(`[data-tutorial-anchor="${anchor}"]`);
-      if (el) {
-        const mainRect = main.getBoundingClientRect();
-        const anchorRect = el.getBoundingClientRect();
-        const boxRect = boxRef.current.getBoundingClientRect();
-        const top = anchorRect.top - mainRect.top - boxRect.height - TUTORIAL_BOX_GAP;
-        let left = anchorRect.left - mainRect.left + anchorRect.width / 2;
-        const minLeft = boxRect.width / 2;
-        const maxLeft = mainRect.width - boxRect.width / 2;
-        left = Math.max(minLeft, Math.min(maxLeft, left));
-        next = { top, left };
+    const page = pageRef.current;
+    const main = mainRef.current;
+    const box = boxRef.current;
+    if (positionAnchor && main && box && page) {
+      const el = page.querySelector(`[data-tutorial-anchor="${positionAnchor}"]`);
+      if (el instanceof HTMLElement) {
+        next = computeTutorialInfoboxPosition(main, el, box, positionAnchor);
       }
     }
-    const id = requestAnimationFrame(() => setBoxPosition(next));
+    const id = requestAnimationFrame(() => {
+      setBoxPosition(next);
+      if (next != null && main && box) {
+        setSlideEdge(nearestEdgeForInfobox(main, next, box));
+      } else {
+        setSlideEdge('right');
+      }
+    });
     return () => cancelAnimationFrame(id);
-  }, [anchor, game, step.id]);
+  }, [positionAnchor, game, displayStep.id, slidePhase, displayIndex]);
 
   useEffect(() => {
-    if (!anchor || !mainRef.current) return;
+    if (!positionAnchor || !pageRef.current || !mainRef.current || !boxRef.current) return;
+    if (slidePhase === 'out') return;
+    const page = pageRef.current;
     const main = mainRef.current;
+    const box = boxRef.current;
     const ro = new ResizeObserver(() => {
-      if (!boxRef.current) return;
-      const el = main.querySelector(`[data-tutorial-anchor="${anchor}"]`);
-      if (!el) return;
-      const mainRect = main.getBoundingClientRect();
-      const anchorRect = el.getBoundingClientRect();
-      const boxRect = boxRef.current.getBoundingClientRect();
-      const top = anchorRect.top - mainRect.top - boxRect.height - TUTORIAL_BOX_GAP;
-      let left = anchorRect.left - mainRect.left + anchorRect.width / 2;
-      const minLeft = boxRect.width / 2;
-      const maxLeft = mainRect.width - boxRect.width / 2;
-      left = Math.max(minLeft, Math.min(maxLeft, left));
-      setBoxPosition({ top, left });
+      if (slidePhaseRef.current === 'out') return;
+      const el = page.querySelector(`[data-tutorial-anchor="${positionAnchor}"]`);
+      if (!(el instanceof HTMLElement)) return;
+      const pos = computeTutorialInfoboxPosition(main, el, box, positionAnchor);
+      setBoxPosition(pos);
+      setSlideEdge(nearestEdgeForInfobox(main, pos, box));
     });
+    ro.observe(page);
     ro.observe(main);
     return () => ro.disconnect();
-  }, [anchor]);
+  }, [positionAnchor, slidePhase]);
+
+  useEffect(() => {
+    if (stepIndex === displayIndex) return;
+    if (slidePhase === 'out') return;
+    const edge = slideEdge;
+    const id = requestAnimationFrame(() => {
+      setExitEdge(edge);
+      setSlidePhase('out');
+    });
+    return () => cancelAnimationFrame(id);
+  }, [stepIndex, displayIndex, slidePhase, slideEdge]);
+
+  const handleExitComplete = useCallback(() => {
+    if (pendingContinueRef.current) {
+      pendingContinueRef.current = false;
+      goToNextStep();
+      setDisplayIndex((d) => d + 1);
+    } else {
+      setDisplayIndex(stepIndexRef.current);
+    }
+    setSlidePhase('in');
+  }, [goToNextStep]);
+
+  const handleSlideAnimationEnd = useCallback(
+    (e: { animationName: string; stopPropagation: () => void }) => {
+      if (slidePhase !== 'out') return;
+      if (!isSlideOutAnimationName(e.animationName)) return;
+      e.stopPropagation();
+      handleExitComplete();
+    },
+    [slidePhase, handleExitComplete],
+  );
+
+  const handleContinueClick = () => {
+    pendingContinueRef.current = true;
+    setExitEdge(slideEdge);
+    setSlidePhase('out');
+  };
 
   if (authLoading || !user) {
     return (
@@ -102,38 +248,31 @@ export function Learn() {
     );
   }
 
-  return (
-    <div className="h-screen flex flex-col bg-(--color-surface)">
-      <header className="app-header shrink-0 z-10 flex items-center justify-between gap-4 px-4 py-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center justify-center w-10 h-10 rounded-lg text-muted hover:text-text-primary hover:bg-surface-panel transition-colors shrink-0"
-            aria-label="Back"
-            title="Back"
-          >
-            <span className="inline-block scale-x-[-1]">
-              <Icon src={icons.forwardArrow} className="size-5 [&_.icon-svg]:size-5" />
-            </span>
-          </button>
-          <span className="font-semibold text-on-surface truncate">Learn to play</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/what-if')}
-            className="btn-secondary text-sm py-2 px-3"
-            aria-label="Open What-if scorer"
-            title="Open What-if scorer"
-          >
-            What-if
-          </button>
-          <AccountMenu theme={theme} setTheme={setTheme} onSignOut={signOut} />
-        </div>
-      </header>
+  const edgeClass = slidePhase === 'out' ? exitEdge : slideEdge;
 
-      <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+  return (
+    <div ref={pageRef} className="h-screen flex flex-col bg-(--color-surface)">
+      <SiteHeader
+        theme={theme}
+        setTheme={setTheme}
+        onSignOut={signOut}
+        homeLinkTutorialAnchor
+      />
+
+      <main
+        ref={mainRef}
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 flex flex-col min-h-0 overflow-visible relative"
+      >
+        {displayStep.id === 'intro' && (
+          <div
+            aria-hidden
+            data-tutorial-anchor="learn-intro"
+            className="pointer-events-none absolute left-1/2 bottom-28 -translate-x-1/2 w-px h-px overflow-hidden"
+          />
+        )}
+
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {game ? (
             <GameBoard
@@ -154,9 +293,12 @@ export function Learn() {
               tutorialAllowedActions={step.allowedActions}
               tutorialDiscardTile={suggestedDiscardTile}
             />
-          ) : step.id === 'intro' ? (
+          ) : displayStep.id === 'intro' ? (
             <div className="flex-1 flex items-center justify-center p-6">
-              <p className="text-muted text-sm text-center max-w-sm">Tap Continue to start.</p>
+              <p className="text-muted text-sm text-center max-w-sm">
+                Tap <span className="font-medium text-on-surface">Continue</span> in the card below when you are ready to
+                start the tutorial.
+              </p>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
@@ -167,30 +309,44 @@ export function Learn() {
 
         <div
           ref={boxRef}
-          className={`absolute z-20 w-full max-w-[280px] panel px-4 py-3 shadow-xl rounded-xl border-2 border-(--color-primary) bg-surface-panel ring-2 ring-(--color-primary)/30 ${boxPosition == null ? 'top-3 right-3' : ''}`}
+          className={`absolute z-20 w-[min(100%-2rem,260px)] max-w-[260px] ${
+            boxPosition == null ? 'top-3 right-3' : 'pointer-events-none'
+          }`}
           style={
             boxPosition
-              ? { top: boxPosition.top, left: boxPosition.left, transform: 'translateX(-50%)' }
+              ? { top: boxPosition.top, left: boxPosition.left, transform: 'translateX(-50%)', right: 'auto' }
               : undefined
           }
-          role="status"
-          aria-live="polite"
         >
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-xs font-medium text-(--color-primary) tabular-nums" aria-hidden>Step {stepIndex + 1} of {totalSteps}</span>
-          </div>
-          <p className="text-base font-semibold text-on-surface">{step.title}</p>
-          <p className="text-sm text-on-surface/95 mt-0.5">{step.description}</p>
-          {showContinue && (
-            <button
-              type="button"
-              onClick={goToNextStep}
-              className="btn-primary text-sm font-medium w-full min-h-[44px] mt-3 py-2.5"
-              aria-label="Continue to next step"
+          <div
+            key={displayIndex}
+            className={`tutorial-slide-shell--${slidePhase}-${edgeClass} pointer-events-auto`}
+            onAnimationEnd={handleSlideAnimationEnd}
+          >
+            <div
+              className="px-3.5 py-3 rounded-xl border border-border/80 bg-surface-panel shadow-lg"
+              role="status"
+              aria-live="polite"
             >
-              Continue
-            </button>
-          )}
+              <div className="mb-1 border-l-2 border-(--color-primary)/70 pl-2 -ml-0.5">
+                <span className="text-xs font-medium text-muted tabular-nums" aria-hidden>
+                  Step {displayIndex + 1} of {totalSteps}
+                </span>
+              </div>
+              <p className="text-base font-semibold text-on-surface leading-snug">{displayStep.title}</p>
+              <p className="text-sm text-muted mt-1 leading-relaxed">{displayStep.description}</p>
+              {showContinue && (
+                <button
+                  type="button"
+                  onClick={handleContinueClick}
+                  className="btn-primary text-sm font-medium w-full min-h-[44px] min-w-0 mt-3 py-2.5"
+                  aria-label="Continue to next step"
+                >
+                  Continue
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -7,7 +7,14 @@ import type {
   ScoringResult,
   ScoringBreakdownEntry,
 } from '../types';
+import { DEFAULT_RULESET_ID, type RulesetId } from '../terminology/rulesetTerminology';
 import { apiFetch } from './client';
+
+/** Optional fields on game mutation responses (server-driven bot steps). */
+export type GameMutationMeta = {
+  aiStepsApplied?: number;
+  aiStepCapReached?: boolean;
+};
 
 async function throwOnError(res: Response): Promise<void> {
   if (res.ok) return;
@@ -66,6 +73,40 @@ export async function joinLobby(
   return res.json();
 }
 
+export async function addBotToLobbySeat(
+  lobbyId: string,
+  seatIndex: number,
+  token: string | null,
+  options?: { displayName?: string; difficulty?: string }
+): Promise<{ message: string; lobbyId: string; seatIndex: number; playerId: string }> {
+  const res = await apiFetch(`/api/lobby/${lobbyId}/seats/${seatIndex}/bot`, {
+    method: 'POST',
+    body: JSON.stringify({
+      ...(options?.displayName != null && options.displayName !== ''
+        ? { aiProfile: { displayName: options.displayName } }
+        : {}),
+      ...(options?.difficulty ? { difficulty: options.difficulty } : {}),
+    }),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+export async function removeBotFromLobbySeat(
+  lobbyId: string,
+  seatIndex: number,
+  token: string | null
+): Promise<{ message: string; lobbyId: string; seatIndex: number; playerId: string }> {
+  const res = await apiFetch(`/api/lobby/${lobbyId}/seats/${seatIndex}/bot`, {
+    method: 'DELETE',
+    body: JSON.stringify({}),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
 export async function deleteLobby(lobbyId: string, token: string | null): Promise<{ lobbyId: string }> {
   const res = await apiFetch(`/api/lobby/${lobbyId}`, {
     method: 'DELETE',
@@ -78,11 +119,12 @@ export async function deleteLobby(lobbyId: string, token: string | null): Promis
 
 export async function createGame(
   lobbyId: string,
-  token: string | null
+  token: string | null,
+  ruleSetId: RulesetId = DEFAULT_RULESET_ID
 ): Promise<{ gameId: string }> {
   const res = await apiFetch(`/api/lobby/${lobbyId}/createGame`, {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify({ ruleSetId }),
     token,
   });
   await throwOnError(res);
@@ -98,7 +140,7 @@ export async function getGame(gameId: string, token: string | null): Promise<Gam
 export async function rollAndDealTiles(
   gameId: string,
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/rollAndDealTiles`, {
     method: 'PUT',
     token,
@@ -110,7 +152,7 @@ export async function rollAndDealTiles(
 export async function drawTile(
   gameId: string,
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/drawTile`, {
     method: 'PUT',
     body: JSON.stringify({}),
@@ -124,7 +166,7 @@ export async function discardTile(
   gameId: string,
   tile: Tile,
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/discardTile`, {
     method: 'PUT',
     body: JSON.stringify({ tileDiscarded: tile }),
@@ -150,11 +192,12 @@ export async function mahjong(
 
 export async function scoreHand(
   context: ScoringContext,
-  token: string | null
+  token: string | null,
+  ruleSetId: RulesetId = DEFAULT_RULESET_ID
 ): Promise<ScoringResult> {
   const res = await apiFetch('/api/scoring/score', {
     method: 'POST',
-    body: JSON.stringify({ context }),
+    body: JSON.stringify({ context, ruleSetId }),
     token,
   });
   if (!res.ok) {
@@ -171,7 +214,10 @@ export async function scoreHand(
   return res.json();
 }
 
-export async function claimPong(gameId: string, token: string | null): Promise<{ gameId: string }> {
+export async function claimPong(
+  gameId: string,
+  token: string | null
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/pong`, {
     method: 'PUT',
     body: JSON.stringify({}),
@@ -181,7 +227,10 @@ export async function claimPong(gameId: string, token: string | null): Promise<{
   return res.json();
 }
 
-export async function claimKong(gameId: string, token: string | null): Promise<{ gameId: string }> {
+export async function claimKong(
+  gameId: string,
+  token: string | null
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/kong`, {
     method: 'PUT',
     body: JSON.stringify({}),
@@ -191,17 +240,28 @@ export async function claimKong(gameId: string, token: string | null): Promise<{
   return res.json();
 }
 
-export async function claimChow(gameId: string, token: string | null): Promise<{ gameId: string }> {
+export async function claimChow(
+  gameId: string,
+  token: string | null,
+  chowVariantId?: string
+): Promise<{ gameId: string } & GameMutationMeta> {
+  const body: Record<string, unknown> = {};
+  if (chowVariantId != null && chowVariantId !== '') {
+    body.chowVariantId = chowVariantId;
+  }
   const res = await apiFetch(`/api/game/${gameId}/chow`, {
     method: 'PUT',
-    body: JSON.stringify({}),
+    body: JSON.stringify(body),
     token,
   });
   await throwOnError(res);
   return res.json();
 }
 
-export async function passClaim(gameId: string, token: string | null): Promise<{ gameId: string }> {
+export async function passClaim(
+  gameId: string,
+  token: string | null
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/pass`, {
     method: 'PUT',
     body: JSON.stringify({}),
@@ -215,7 +275,7 @@ export async function concealedPong(
   gameId: string,
   tiles: Tile[],
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/concealedPong`, {
     method: 'PUT',
     body: JSON.stringify({ tiles }),
@@ -229,7 +289,7 @@ export async function concealedChow(
   gameId: string,
   tiles: Tile[],
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/concealedChow`, {
     method: 'PUT',
     body: JSON.stringify({ tiles }),
@@ -243,10 +303,25 @@ export async function concealedKong(
   gameId: string,
   tile: Tile,
   token: string | null
-): Promise<{ gameId: string }> {
+): Promise<{ gameId: string } & GameMutationMeta> {
   const res = await apiFetch(`/api/game/${gameId}/concealedKong`, {
     method: 'PUT',
     body: JSON.stringify({ tile }),
+    token,
+  });
+  await throwOnError(res);
+  return res.json();
+}
+
+/**
+ * Advance exactly one bot turn on the server.
+ * Returns `{ stepped: true }` when a bot action was applied (caller should re-fetch game state),
+ * or `{ stepped: false }` when it is already a human's turn or the game is over.
+ */
+export async function stepBot(gameId: string, token: string | null): Promise<{ stepped: boolean }> {
+  const res = await apiFetch(`/api/game/${gameId}/stepBot`, {
+    method: 'POST',
+    body: JSON.stringify({}),
     token,
   });
   await throwOnError(res);

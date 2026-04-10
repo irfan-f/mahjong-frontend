@@ -7,6 +7,8 @@ export interface ScoringBreakdownEntry {
   pattern: string;
   points: number;
   patternNameEn?: string;
+  /** PDF third column: romanized name with tone digits, e.g. Ping(2)-hu(2). */
+  patternNameRomanized?: string;
   patternNameZh?: string;
 }
 
@@ -22,6 +24,7 @@ export interface ScoringContext {
   winnerMelds?: PlayerMeld[];
   playerMelds?: Record<string, PlayerMeld[]>;
   playerDiscards?: Record<string, Tile[]>;
+  discardHistory?: { playerId: string; tile: Tile }[];
   lastDiscardedTile?: Tile | null;
   /** Compatibility for deferred callers. */
   winnerExposedMelds?: { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[];
@@ -32,6 +35,14 @@ export interface ScoringContext {
   roundWind?: WindTileValue;
   wonOnLastPiece: boolean;
   flowers?: Tile[];
+  /** PDF row 14 (ma-jiang): win on the only possible completing tile. */
+  winsOnOnlyPossibleTile?: boolean;
+  /** PDF row 18 (ma-jiang): win on the 5 completing 4-5-6. */
+  winsOnMiddleFiveOfFourFiveSixRun?: boolean;
+  /** PDF rows 22–24 (ma-jiang): special win sources. */
+  wonOnFourthTileOfRank?: boolean;
+  wonByRobbingKong?: boolean;
+  wonFromOwnKongReplacement?: boolean;
 }
 
 export type Tile =
@@ -57,9 +68,15 @@ export interface PlayerMeld {
   tileCount?: number;
 }
 
+/** Fixed East→South→West→North when backend sends `seats` (new lobbies). */
+export type LobbySeatOrder = [string | null, string | null, string | null, string | null];
+
 export interface Lobby {
   _id?: string;
   players: Record<string, boolean>;
+  hostUserId?: string;
+  seats?: LobbySeatOrder;
+  aiProfiles?: Record<string, { displayName: string; difficulty?: string }>;
   currentGameId?: string;
   wins?: Record<string, number>;
   highestScore?: Record<string, number>;
@@ -96,7 +113,12 @@ export interface Game {
   };
   currentPlayer: string;
   lastDiscardedTile: Tile | null;
+  ruleSetId?: 'default-v1' | 'ma-jiang';
   tilesLeft: number;
+  /** Sum of two dice from roll & deal; drives wall break visualization. Omit → UI defaults (e.g. 7). */
+  wallDiceTotal?: number;
+  /** Total tiles in the wall set (backend HK ruleset uses 136). */
+  wallTotalTiles?: number;
   initialization: {
     playersReady: boolean;
     playerOrderDecided: boolean;
@@ -105,6 +127,8 @@ export interface Game {
   };
   status?: 'active' | 'ended';
   winnerId?: string;
+  /** Backend: `declare-mahjong` (winner set) or `exhaustive-draw` (no winner). */
+  endReason?: 'exhaustive-draw' | 'declare-mahjong';
   scores?: Record<string, number>;
   points?: number;
   breakdown?: ScoringBreakdownEntry[];
@@ -113,6 +137,22 @@ export interface Game {
   playerShowHand?: Record<string, boolean>;
   private?: {
     playerHands?: Record<string, unknown>;
+    /** Coarse claim / mahjong flags (legacy); prefer legalActions when present. */
     potentialActions?: Record<string, string[]>;
+    /** Canonical per-seat actions from the server (draw, discard groups, claims with chow variants, etc.). */
+    legalActions?: Record<string, LegalAction[]>;
   };
 }
+
+/** Mirrors mahjong-backend `domain/legal-actions` discriminated union. */
+export type LegalAction =
+  | { kind: 'draw' }
+  | { kind: 'discard'; tileGroups: Tile[] }
+  | { kind: 'passClaim' }
+  | { kind: 'claimPong' }
+  | { kind: 'claimKong' }
+  | { kind: 'claimChow'; variantId: string; meld: Tile[] }
+  | { kind: 'declareMahjong' }
+  | { kind: 'declareConcealedKong'; tile: Tile }
+  | { kind: 'declareConcealedPong'; tiles: Tile[] }
+  | { kind: 'declareConcealedChow'; tiles: Tile[] };

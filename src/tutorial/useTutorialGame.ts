@@ -25,7 +25,7 @@ export interface TutorialGameControls {
   declareMahjong: () => void;
   claimPong: () => void;
   claimKong: () => void;
-  claimChow: () => void;
+  claimChow: (chowVariantId?: string) => void;
   passClaim: () => void;
 }
 
@@ -115,7 +115,7 @@ export function useTutorialGame(): UseTutorialGameResult {
     advanceStep();
   }, [advanceStep, step.allowedActions.canClaimKong]);
 
-  const claimChow = useCallback(() => {
+  const claimChow = useCallback((_chowVariantId?: string) => {
     if (!step.allowedActions.canClaimChow) return;
     advanceStep();
   }, [advanceStep, step.allowedActions.canClaimChow]);

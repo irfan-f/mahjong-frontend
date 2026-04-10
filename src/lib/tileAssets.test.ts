@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { tileToAssetPath, tileToLabel } from './tileAssets';
+import { tileBackAssetPath, tileToAssetPath, tileToLabel } from './tileAssets';
 import type { Tile } from '../types';
+
+describe('tileBackAssetPath', () => {
+  it('points at tiles/back.svg with base URL', () => {
+    expect(tileBackAssetPath()).toBe(`${import.meta.env.BASE_URL}tiles/back.svg`);
+  });
+});
 
 describe('tileToAssetPath', () => {
   const base = import.meta.env.BASE_URL;

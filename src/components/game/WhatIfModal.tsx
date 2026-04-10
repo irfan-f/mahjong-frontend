@@ -1,5 +1,10 @@
 import { useEffect, useCallback, useState } from 'react';
 import type { Game as GameType, Tile, ScoringContext, ScoringResult, PlayerMeld } from '../../types';
+import {
+  DEFAULT_RULESET_ID,
+  RULESET_SELECT_OPTIONS,
+  type RulesetId,
+} from '../../terminology/rulesetTerminology';
 import { scoreHand } from '../../api/endpoints';
 import { ALL_TILE_TYPES } from '../../lib/allTiles';
 import { TileView } from '../TileView';
@@ -14,6 +19,8 @@ export interface WhatIfModalProps {
   game?: GameType | null;
   /** Get auth token for scoreHand. */
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
+  /** Inline layout for the /what-if route (no fullscreen backdrop). */
+  embedded?: boolean;
 }
 
 function tileKey(t: Tile, index: number): string {
@@ -37,6 +44,7 @@ export function WhatIfModal({
   currentUserId,
   game,
   getIdToken,
+  embedded = false,
 }: WhatIfModalProps) {
   const [hand, setHand] = useState<Tile[]>([]);
   const selfDraw = false;
@@ -44,6 +52,7 @@ export function WhatIfModal({
   const [result, setResult] = useState<ScoringResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [ruleSetId, setRuleSetId] = useState<RulesetId>(DEFAULT_RULESET_ID);
 
   const playerIds = game?.playerIds?.length ? game.playerIds : ['p1', 'p2', 'p3', 'p4'];
   const dealerId = currentUserId ?? playerIds[0];
@@ -56,15 +65,15 @@ export function WhatIfModal({
   }, [game, currentUserId]);
 
   useEffect(() => {
-    if (open) {
-      setResult(null);
-      setError(null);
-      const myHand = game?.playerHands?.[currentUserId ?? ''] ?? [];
-      if (myHand.length === 13) {
-        setHand([...myHand]);
-      } else {
-        setHand([]);
-      }
+    if (!open) return;
+    setResult(null);
+    setError(null);
+    setRuleSetId(game?.ruleSetId ?? DEFAULT_RULESET_ID);
+    const myHand = game?.playerHands?.[currentUserId ?? ''] ?? [];
+    if (myHand.length === 13) {
+      setHand([...myHand]);
+    } else {
+      setHand([]);
     }
   }, [open, game, currentUserId]);
 
@@ -127,7 +136,7 @@ export function WhatIfModal({
         playerIds: gamePlayerIds,
         wonOnLastPiece,
       };
-      const scoringResult = await scoreHand(context, token);
+      const scoringResult = await scoreHand(context, token, ruleSetId);
       setResult(scoringResult);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to score hand');
@@ -148,18 +157,14 @@ export function WhatIfModal({
 
   if (!open) return null;
 
-  return (
+  const card = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="whatif-modal-title"
-      onClick={handleBackdropClick}
+      className={`bg-surface-panel border border-border rounded-xl shadow-xl w-full max-w-lg flex flex-col ${
+        embedded ? 'max-h-none min-h-0' : 'max-h-[90vh]'
+      }`}
+      onClick={embedded ? undefined : (e) => e.stopPropagation()}
     >
-      <div
-        className="bg-surface-panel border border-border rounded-xl shadow-xl max-h-[90vh] w-full max-w-lg flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {!embedded && (
         <div className="flex items-center justify-between gap-2 p-3 border-b border-border shrink-0">
           <h2 id="whatif-modal-title" className="text-lg font-semibold text-on-surface">
             What-if scorer
@@ -174,8 +179,31 @@ export function WhatIfModal({
             Close
           </button>
         </div>
+      )}
 
-        <div className="p-4 overflow-auto flex-1 flex flex-col gap-4">
+      <div className="p-4 overflow-auto flex-1 flex flex-col gap-4 min-h-0">
+          <label className="flex flex-col gap-1.5 text-xs text-muted" htmlFor="whatif-ruleset-select">
+            Ruleset
+            <select
+              id="whatif-ruleset-select"
+              value={ruleSetId}
+              onChange={(e) => {
+                const next = e.target.value as RulesetId;
+                setRuleSetId(next);
+                setResult(null);
+                setError(null);
+              }}
+              className="w-full max-w-xs rounded-lg border border-border bg-surface px-3 py-2 text-sm text-on-surface"
+              aria-label="Scoring ruleset"
+            >
+              {RULESET_SELECT_OPTIONS.map(({ id, label }) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <section aria-label="Your hand">
             <div className="flex flex-wrap items-center gap-1.5 min-h-12 p-2 rounded-lg bg-surface border border-border">
               {hand.length === 0 && (
@@ -234,11 +262,16 @@ export function WhatIfModal({
               </p>
               {result.breakdown && result.breakdown.length > 0 && (
                 <ul className="list-none flex flex-col gap-1 text-sm text-muted">
-                  {result.breakdown.map((entry, i) => (
-                    <li key={i} className="text-on-surface">
-                      {entry.patternNameEn ?? entry.pattern}: {entry.points} points
-                    </li>
-                  ))}
+                  {result.breakdown.map((entry, i) => {
+                    const label = entry.patternNameRomanized
+                      ? `${entry.patternNameEn ?? entry.pattern} (${entry.patternNameRomanized})`
+                      : (entry.patternNameEn ?? entry.pattern);
+                    return (
+                      <li key={i} className="text-on-surface">
+                        {label}: {entry.points} points
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               <button
@@ -271,7 +304,26 @@ export function WhatIfModal({
             </button>
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <section aria-label="What-if hand scoring tool" className="w-full flex justify-center">
+        {card}
+      </section>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="whatif-modal-title"
+      onClick={handleBackdropClick}
+    >
+      {card}
     </div>
   );
 }

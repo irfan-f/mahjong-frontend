@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'production' ? '/mahjong-frontend/' : '/',
   plugins: [tailwindcss(), react()],
   server: { port: 3001 },
+  build: {
+    chunkSizeWarningLimit: 600,
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -7,15 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#011627" media="(prefers-color-scheme: dark)" />
-    <meta name="description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <meta name="description" content="Play Mahjong with Friends online. Create a lobby, share the code, and start a game." />
     <meta name="keywords" content="mahjong, multiplayer, online game, friends, lobby" />
-    <title>Mahjong with friends</title>
+    <title>Mahjong with Friends</title>
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Mahjong with friends" />
-    <meta property="og:description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <meta property="og:title" content="Mahjong with Friends" />
+    <meta property="og:description" content="Play Mahjong with Friends online. Create a lobby, share the code, and start a game." />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Mahjong with friends" />
-    <meta name="twitter:description" content="Play Mahjong with friends online. Create a lobby, share the code, and start a game." />
+    <meta name="twitter:title" content="Mahjong with Friends" />
+    <meta name="twitter:description" content="Play Mahjong with Friends online. Create a lobby, share the code, and start a game." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
@@ -26,6 +26,26 @@
       html, body { background-color: #faf9f7; }
       html.dark body { background-color: #011627; }
     </style>
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var captureId = params.get("figmacapture");
+        var endpoint = params.get("figmaendpoint");
+        if (!captureId || !endpoint) return;
+
+        var delay = Number(params.get("figmadelay") || "1000");
+        window.setTimeout(function () {
+          try {
+            if (window.figma && window.figma.captureForDesign) {
+              window.figma.captureForDesign({ captureId: captureId, endpoint: endpoint, selector: "body" });
+            }
+          } catch (e) {
+            // no-op: capture is best-effort and should never block the app
+          }
+        }, isFinite(delay) ? delay : 1000);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
