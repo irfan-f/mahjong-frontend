@@ -69,18 +69,18 @@ export function OpponentSeatCard({
 
   const positionClass =
     position === 'top'
-      ? 'absolute top-1 left-1/2 z-10 w-[min(100%,23rem)] -translate-x-1/2'
+      ? 'absolute top-1 left-1/2 z-10 w-[min(100%,28rem)] -translate-x-1/2 lg:w-[min(100%,34rem)]'
       : position === 'left'
-        ? 'absolute left-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,38vw)]'
+        ? 'absolute left-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,22vw)] lg:w-[min(13rem,18vw)]'
         : position === 'right'
-          ? 'absolute right-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,38vw)]'
+          ? 'absolute right-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,22vw)] lg:w-[min(13rem,18vw)]'
           : '';
 
   const wrapperClass =
     position === 'grid'
       ? 'relative'
       : position === 'top-flow'
-        ? 'relative z-10 w-full shrink-0 sm:mx-auto sm:w-[min(100%,23rem)]'
+        ? 'relative z-10 w-full shrink-0 sm:mx-auto sm:w-[min(100%,28rem)] lg:w-[min(100%,34rem)]'
         : `${positionClass} max-sm:static max-sm:translate-none max-sm:left-auto max-sm:right-auto max-sm:top-auto max-sm:w-full`;
 
   return (
@@ -219,13 +219,13 @@ export function OpponentSeatCard({
             <>
               <div className={`flex flex-wrap gap-0.5 ${discardsRowJustify}`}>
                 {previewDiscards.map((t, i) => (
-                  <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5" />
+                  <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
                 ))}
               </div>
               <TilePopover open={discardOverlayOpen} onClose={() => setDiscardOverlayOpen(false)} anchorRef={discardBtnRef} align="end">
                 <div className="flex flex-wrap gap-1">
                   {discards.map((t, i) => (
-                    <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5" />
+                    <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
                   ))}
                 </div>
               </TilePopover>
@@ -238,7 +238,7 @@ export function OpponentSeatCard({
           <span className="text-xs font-medium text-muted">Hand</span>
           <div className="flex flex-wrap justify-center gap-0.5">
             {hand.map((t: Tile, i: number) => (
-              <TileView key={i} tile={t} className="h-7 w-5" />
+              <TileView key={i} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
             ))}
           </div>
         </div>

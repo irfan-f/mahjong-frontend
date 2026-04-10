@@ -481,7 +481,7 @@ export function GameBoard({
   const [mobileWallOpen, setMobileWallOpen] = useState(false);
   const [mobileFocusMode, setMobileFocusMode] = useState<'normal' | 'table'>('normal');
   const [mobileExpandedOpponentPid, setMobileExpandedOpponentPid] = useState<string | null>(null);
-  const [mobileDockSection, setMobileDockSection] = useState<'none' | 'melds' | 'discards'>('none');
+  const [mobileDockSection, setMobileDockSection] = useState<'hand' | 'melds' | 'discards'>('hand');
 
   const handleOpponentAccordionToggle = useCallback((pid: string) => {
     setMobileExpandedOpponentPid((cur) => (cur === pid ? null : pid));
@@ -563,6 +563,10 @@ export function GameBoard({
       setChowPickIndices([]);
     }
   }, [canClaimChow, chowClaimActions.length]);
+
+  useEffect(() => {
+    if (chowPickMode) setMobileDockSection('hand');
+  }, [chowPickMode]);
 
   const chowPickSelectedTiles = useMemo(
     () => chowPickIndices.map((i) => myHand[i]).filter((t): t is Tile => t != null),
@@ -685,13 +689,15 @@ export function GameBoard({
 
   const renderMeldTiles = (meld: PlayerMeld, isOwner: boolean) => {
     if (meld.tiles && (isOwner || meld.visibility !== 'concealed')) {
-      return meld.tiles.map((t, ti) => <TileView key={ti} tile={t} className="h-7 w-5" />);
+      return meld.tiles.map((t, ti) => (
+        <TileView key={ti} tile={t} className="h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6" />
+      ));
     }
     const count = meld.tileCount ?? meld.tiles?.length ?? 0;
     return (
       <>
         {Array.from({ length: count }).map((_, idx) => (
-          <TileBackView key={idx} className="h-7 w-5" aria-hidden />
+          <TileBackView key={idx} className="h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6" aria-hidden />
         ))}
         <span className="text-[10px] text-muted w-full text-center">Concealed x{count}</span>
       </>
@@ -811,10 +817,18 @@ export function GameBoard({
   );
 
   const mobileTableFocusDock = mobileFocusMode === 'table';
+  const showMobileHandPanel =
+    isTutorial ||
+    mobileDockSection === 'hand' ||
+    chowPickMode ||
+    concealedMode != null;
+
+  const handTileSizeClass =
+    'h-[clamp(2.65rem,3.5vw+2rem,3.5rem)] w-[clamp(1.75rem,2.5vw+1.05rem,2.5rem)] sm:h-14 sm:w-10 lg:h-16 lg:w-11';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 min-h-0 flex-col gap-2 overflow-y-auto p-2 sm:gap-3 sm:p-3">
+      <div className="mx-auto flex w-full max-w-4xl lg:max-w-6xl xl:max-w-none xl:px-8 flex-1 min-h-0 flex-col gap-2 overflow-y-auto overscroll-y-contain p-2 sm:gap-3 sm:p-3">
         {error && (
           <div
             className="panel game-board-notice-enter rounded-xl px-4 py-3 text-danger text-sm"
@@ -856,7 +870,7 @@ export function GameBoard({
           <>
             <section
               aria-label="Players and discards"
-              className={`relative flex w-full min-h-[min(260px,42svh)] flex-col gap-2 overflow-visible max-sm:gap-2 sm:min-h-[min(320px,50svh)] md:min-h-[380px] ${
+              className={`relative flex w-full min-h-[min(260px,42svh)] flex-col gap-2 overflow-visible max-sm:gap-2 sm:flex-1 sm:min-h-0 ${
                 !isTutorial ? 'max-sm:hidden' : ''
               }`}
             >
@@ -880,7 +894,7 @@ export function GameBoard({
                   />
                 );
               })()}
-              <div className="relative flex w-full flex-1 flex-col max-sm:min-h-[min(200px,34svh)] max-sm:gap-2 sm:min-h-[min(240px,38svh)] md:min-h-[280px]">
+              <div className="relative flex w-full flex-1 flex-col max-sm:min-h-[min(200px,34svh)] max-sm:gap-2 sm:min-h-0">
                 <div className="max-sm:order-1 sm:contents">
                   {(() => {
                     const pid = opponentSlotsResolved.left;
@@ -954,7 +968,7 @@ export function GameBoard({
             {!isTutorial ? (
               <section
                 aria-label="Players and discards"
-                className="flex flex-col overflow-hidden rounded-xl border border-border/50 bg-surface-panel/90 sm:hidden"
+                className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-surface-panel/90 sm:hidden"
               >
                 <div className="flex flex-wrap gap-1 border-b border-border/40 bg-(--color-surface-panel-muted)/20 p-2">
                   {(['normal', 'table'] as const).map((m) => (
@@ -984,7 +998,7 @@ export function GameBoard({
                   </div>
                 )}
 
-                <div className="divide-y divide-border/40">
+                <div className="min-h-0 max-h-[min(52svh,26rem)] divide-y divide-border/40 overflow-y-auto overscroll-contain">
                   {[opponentSlotsResolved.top, opponentSlotsResolved.left, opponentSlotsResolved.right].map((pid) => {
                     const wind = windByPlayer[pid];
                     const melds = game.playerMelds?.[pid] ?? [];
@@ -1132,9 +1146,9 @@ export function GameBoard({
 
       </div>
 
-      <div className="w-full shrink-0 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="w-full shrink-0 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-8">
         <div
-          className={`mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-2xl border border-border/50 bg-surface-panel p-2 shadow-sm sm:gap-3 sm:p-4 ${
+          className={`mx-auto flex w-full max-w-4xl lg:max-w-6xl xl:max-w-none flex-col gap-2 rounded-2xl border border-border/50 bg-surface-panel p-2 shadow-sm max-sm:max-h-[min(56svh,28rem)] max-sm:min-h-0 max-sm:overflow-y-auto max-sm:overscroll-contain sm:max-h-none sm:overflow-visible sm:gap-3 sm:p-4 ${
             !isEnded && game.currentPlayer === currentUserId
               ? 'ring-1 ring-(--color-ring-focus) ring-offset-1 ring-offset-(--color-surface) sm:ring-2 sm:ring-offset-2'
               : ''
@@ -1144,14 +1158,14 @@ export function GameBoard({
         {init.tilesDealt && (
           <>
             <div
-              className="hidden flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-border/30 pb-2 text-center text-xs text-muted sm:flex sm:gap-x-4 sm:text-sm"
+              className="hidden flex-wrap items-center justify-center gap-x-4 gap-y-1 border-b border-border/30 pb-2 text-center text-sm text-muted sm:flex lg:gap-x-6 lg:text-base"
               role="status"
             >
-              <span>{isEnded ? 'Game over' : `Current: ${currentPlayerLabel}`}</span>
-              <span className="tabular-nums">Tiles left: {game.tilesLeft}</span>
+              <span className="font-medium text-on-surface">{isEnded ? 'Game over' : `${currentPlayerLabel}`}</span>
+              <span className="tabular-nums">Tiles left: <strong className="text-on-surface">{game.tilesLeft}</strong></span>
               {game.lastDiscardedTile && (
                 <span className="inline-flex items-center gap-1.5">
-                  Last discard: <TileView tile={game.lastDiscardedTile} className="inline-block h-6 w-4" />
+                  Last discard: <TileView tile={game.lastDiscardedTile} className="inline-block h-7 w-5 lg:h-8 lg:w-6" />
                 </span>
               )}
             </div>
@@ -1159,16 +1173,19 @@ export function GameBoard({
               className="flex flex-nowrap items-center gap-1.5 overflow-x-auto border-b border-border/30 pb-2 sm:hidden"
               role="status"
             >
-              <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[10px] font-medium text-on-surface">
+              <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[clamp(0.625rem,2.8vw,0.8125rem)] font-medium text-on-surface">
                 {isEnded ? 'Over' : currentPlayerLabel}
               </span>
-              <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[10px] tabular-nums text-muted">
+              <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[clamp(0.625rem,2.8vw,0.8125rem)] tabular-nums text-muted">
                 {game.tilesLeft} left
               </span>
               {game.lastDiscardedTile ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[10px] text-muted">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-[clamp(0.625rem,2.8vw,0.8125rem)] text-muted">
                   Last
-                  <TileView tile={game.lastDiscardedTile} className="inline-block h-5 w-3.5" />
+                  <TileView
+                    tile={game.lastDiscardedTile}
+                    className="inline-block h-[clamp(1.15rem,3vw,1.35rem)] w-[clamp(0.85rem,2.2vw,1rem)]"
+                  />
                 </span>
               ) : null}
             </div>
@@ -1181,7 +1198,7 @@ export function GameBoard({
               : `You can win, but declare your melds first (${declaredMeldsCount}/4)`}
           </p>
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-3 max-sm:flex-col sm:flex-row sm:items-stretch sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 max-sm:flex-col sm:flex-row sm:items-stretch sm:gap-4 lg:gap-6">
           <div className="flex min-w-0 flex-1 flex-col">
         {init.tilesDealt && (myHand.length > 0 || myMelds.length > 0) && (
           <section
@@ -1190,35 +1207,36 @@ export function GameBoard({
             data-tutorial-anchor="hand"
           >
             {init.tilesDealt && !isTutorial ? (
-              <div className="mb-0 flex max-w-full flex-wrap gap-1 max-sm:order-1 sm:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileDockSection((s) => (s === 'melds' ? 'none' : 'melds'))}
-                  className={
-                    mobileDockSection === 'melds'
-                      ? 'rounded-lg bg-(--color-primary) px-2 py-1 text-[11px] font-medium text-white'
-                      : 'rounded-lg border border-border/60 bg-surface-panel-muted/50 px-2 py-1 text-[11px] font-medium text-on-surface'
-                  }
-                >
-                  Melds
-                  {(() => {
-                    const c = getMeldCountParts(myMelds);
-                    return c.base > 0 || c.kongBonus > 0
-                      ? ` (${c.base}${c.kongBonus > 0 ? `+${c.kongBonus}` : ''})`
-                      : '';
-                  })()}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileDockSection((s) => (s === 'discards' ? 'none' : 'discards'))}
-                  className={
-                    mobileDockSection === 'discards'
-                      ? 'rounded-lg bg-(--color-primary) px-2 py-1 text-[11px] font-medium text-white'
-                      : 'rounded-lg border border-border/60 bg-surface-panel-muted/50 px-2 py-1 text-[11px] font-medium text-on-surface'
-                  }
-                >
-                  Discards{myDiscards.length > 0 ? ` (${myDiscards.length})` : ''}
-                </button>
+              <div
+                className="mb-0 flex max-w-full flex-wrap items-center gap-1 max-sm:order-1 sm:hidden"
+                role="tablist"
+                aria-label="Hand area sections"
+              >
+                {(['hand', 'melds', 'discards'] as const).map((section) => (
+                  <button
+                    key={section}
+                    type="button"
+                    role="tab"
+                    aria-selected={mobileDockSection === section}
+                    onClick={() => setMobileDockSection(section)}
+                    className={
+                      mobileDockSection === section
+                        ? 'rounded-lg bg-(--color-primary) px-2.5 py-1.5 text-[clamp(0.65rem,2.5vw,0.75rem)] font-semibold text-white shadow-sm'
+                        : 'rounded-lg border border-border/60 bg-surface-panel-muted/50 px-2.5 py-1.5 text-[clamp(0.65rem,2.5vw,0.75rem)] font-medium text-on-surface'
+                    }
+                  >
+                    {section === 'hand'
+                      ? 'Hand'
+                      : section === 'melds'
+                        ? `Melds${(() => {
+                            const c = getMeldCountParts(myMelds);
+                            return c.base > 0 || c.kongBonus > 0
+                              ? ` (${c.base}${c.kongBonus > 0 ? `+${c.kongBonus}` : ''})`
+                              : '';
+                          })()}`
+                        : `Discards${myDiscards.length > 0 ? ` (${myDiscards.length})` : ''}`}
+                  </button>
+                ))}
                 {!isTutorial && myHand.length > 1 ? (
                   <button
                     type="button"
@@ -1237,7 +1255,7 @@ export function GameBoard({
                       setHandOrder(indices.map((idx) => tokens[idx]!).filter(Boolean));
                     }}
                     disabled={acting}
-                    className="rounded-lg border border-border/60 bg-surface-panel-muted/50 px-2 py-1 text-[11px] font-medium text-on-surface"
+                    className="ml-auto rounded-lg border border-border/60 bg-surface-panel-muted/50 px-2 py-1.5 text-[clamp(0.65rem,2.5vw,0.75rem)] font-medium text-on-surface"
                     aria-label="Sort hand"
                     title="Sort hand"
                   >
@@ -1249,7 +1267,7 @@ export function GameBoard({
             <div className="mb-2 flex min-h-8 max-sm:contents items-start justify-between gap-2 sm:mb-2 sm:flex sm:flex-row">
               <div
                 aria-label="Your melds"
-                className={`flex min-w-0 flex-1 flex-col items-start gap-1 max-sm:order-3 max-sm:w-full ${
+                className={`flex min-w-0 flex-1 flex-col items-start gap-1 max-sm:order-3 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pr-0.5 sm:min-w-[8rem] lg:min-w-[10rem] ${
                   !isTutorial && mobileDockSection !== 'melds' ? 'max-sm:hidden' : ''
                 } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
               >
@@ -1277,7 +1295,7 @@ export function GameBoard({
                 })()}
                 {myMelds.length > 0 ? (
                   <>
-                    <div className="flex flex-wrap justify-start gap-0.5">
+                    <div className="flex flex-wrap justify-start gap-1">
                       {myMeldPreviewSplit.preview.map((meld) => (
                         <div key={meld.meldId} className="flex flex-col items-center gap-0.5" title={meld.type}>
                           <div className="flex flex-wrap gap-0.5">{renderMeldTiles(meld, true)}</div>
@@ -1308,7 +1326,11 @@ export function GameBoard({
                   </>
                 ) : null}
               </div>
-              <div className="flex max-w-full min-w-0 max-sm:order-2 flex-col items-center gap-0.5 px-1 sm:shrink-0">
+              <div
+                className={`flex max-w-full min-w-0 max-sm:order-2 flex-col items-center gap-0.5 px-1 sm:shrink-0 ${
+                  !showMobileHandPanel ? 'max-sm:hidden' : ''
+                }`}
+              >
                 {isEnded ? (
                   <span className="text-sm font-medium text-on-surface text-center">
                     {iWon ? 'Your winning hand' : 'Your hand'}
@@ -1383,7 +1405,7 @@ export function GameBoard({
               </div>
               <div
                 aria-label="Your discards"
-                className={`flex min-w-0 flex-1 flex-col items-end gap-1 max-sm:order-4 max-sm:w-full ${
+                className={`flex min-w-0 flex-1 flex-col items-end gap-1 max-sm:order-4 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-0.5 sm:min-w-[8rem] lg:min-w-[10rem] ${
                   !isTutorial && mobileDockSection !== 'discards' ? 'max-sm:hidden' : ''
                 } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
               >
@@ -1408,14 +1430,18 @@ export function GameBoard({
                         <TileView
                           key={`${t._type}-${String(t.value)}-${i}`}
                           tile={t}
-                          className="h-10 w-7"
+                          className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7"
                         />
                       ))}
                     </div>
                     <TilePopover open={myDiscardsOverlayOpen} onClose={() => setMyDiscardsOverlayOpen(false)} anchorRef={myDiscardsBtnRef} align="end">
                       <div className="flex flex-wrap gap-1">
                         {myDiscards.map((t, i) => (
-                          <TileView key={i} tile={t} className="h-10 w-7" />
+                          <TileView
+                            key={i}
+                            tile={t}
+                            className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7"
+                          />
                         ))}
                       </div>
                     </TilePopover>
@@ -1423,7 +1449,13 @@ export function GameBoard({
                 ) : null}
               </div>
             </div>
-            <div className="flex min-h-14 max-sm:order-5 flex-wrap items-end justify-start gap-1 overflow-x-auto overflow-y-visible pb-0.5 sm:justify-center">
+            <div
+              className={`flex min-h-14 max-sm:order-5 flex-wrap items-end justify-start gap-1 overflow-x-auto overflow-y-visible pt-1.5 pb-1 sm:justify-center sm:pt-2 ${
+                !showMobileHandPanel ? 'max-sm:hidden' : ''
+              }`}
+              role="tabpanel"
+              aria-label="Your tiles"
+            >
               <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <SortableContext items={handOrder} strategy={horizontalListSortingStrategy}>
                   {orderedHandIndices.map((i, ord) => {
@@ -1456,7 +1488,7 @@ export function GameBoard({
                     onClick={() => toggleChowPickIndex(i)}
                     disabled={acting}
                     selected={isChowPickSelected}
-                    className="h-14 w-10"
+                    className={handTileSizeClass}
                     aria-label={`Select ${tileToLabel(t)} for chow`}
                     title="Select tile for chow"
                   />
@@ -1468,7 +1500,7 @@ export function GameBoard({
                     onClick={() => onDiscardTile(t)}
                     disabled={acting}
                     selected={isTutorialSuggested}
-                    className="h-14 w-10"
+                    className={handTileSizeClass}
                     aria-label={isTutorialSuggested ? 'Discard this tile' : `Discard ${tileToLabel(t)}`}
                     title={isTutorialSuggested ? 'Discard this tile' : undefined}
                   />
@@ -1482,7 +1514,7 @@ export function GameBoard({
                     }}
                     disabled={acting}
                     selected={isDiscardSelected}
-                    className="h-14 w-10"
+                    className={handTileSizeClass}
                     aria-label={`Select ${tileToLabel(t)} to discard`}
                     title="Select tile to discard"
                   />
@@ -1496,21 +1528,21 @@ export function GameBoard({
                     }}
                     disabled={acting}
                     selected={isConcealedSelected}
-                    className="h-14 w-10"
+                    className={handTileSizeClass}
                     aria-label={`Select ${tileToLabel(t)} for concealed meld`}
                     title="Select tile for concealed meld"
                   />
                 ) : (
-                  <TileView key={i} tile={t} className="h-14 w-10" />
+                  <TileView key={i} tile={t} className={handTileSizeClass} />
                 );
                 const decoratedTileEl = isNewlyDrawn ? (
-                  <div key={`new-${i}`} className="relative inline-block">
+                  <div key={`new-${i}`} className="relative inline-flex flex-col items-center">
                     {tileEl}
                     <span
-                      className="absolute -top-1 -right-1 inline-flex h-3 w-3 rounded-full bg-(--color-primary) ring-2 ring-(--color-surface)"
-                      aria-label="Newly drawn tile"
-                      title="Newly drawn tile"
+                      className="pointer-events-none absolute right-1 top-1 z-20 inline-flex h-2.5 w-2.5 rounded-full bg-(--color-primary) shadow-sm ring-2 ring-white dark:ring-(--color-surface-panel)"
+                      aria-hidden
                     />
+                    <span className="sr-only">Newly drawn tile</span>
                   </div>
                 ) : (
                   tileEl
@@ -1518,19 +1550,7 @@ export function GameBoard({
                     let content: ReactNode = decoratedTileEl;
                     if (isChowPickTile) {
                       content = (
-                        <div
-                          className={`flex flex-col items-center gap-1 transition-transform duration-150 ${
-                            isChowPickSelected ? '-translate-y-1' : ''
-                          }`}
-                        >
-                          {decoratedTileEl}
-                        </div>
-                      );
-                    } else if (isDiscardSelected) {
-                      content = (
-                        <div className="flex flex-col items-center gap-1 transition-transform duration-150 -translate-y-1">
-                          {decoratedTileEl}
-                        </div>
+                        <div className="flex flex-col items-center gap-1">{decoratedTileEl}</div>
                       );
                     } else if (isTutorialSuggested) {
                       content = (
@@ -1560,7 +1580,7 @@ export function GameBoard({
         )}
           </div>
         <div
-          className="flex w-full shrink-0 flex-col items-stretch gap-2 border-t border-border/40 pt-3 sm:w-44 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 [&_button]:w-full [&_button]:justify-center"
+          className="flex w-full shrink-0 flex-col items-stretch gap-2 border-t border-border/40 pt-3 sm:w-48 md:w-52 lg:w-56 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 lg:pl-6 [&_button]:w-full [&_button]:justify-center"
           data-tutorial-anchor="action-bar"
         >
           {init.tilesDealt && onOpenWhatIf && (
