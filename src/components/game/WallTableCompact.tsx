@@ -58,22 +58,20 @@ export const WallTableCompact = memo(function WallTableCompact({
               title={`${letter}: ${counts[key]} tiles`}
               className="flex flex-col items-center justify-center rounded-lg border border-border/35 bg-(--color-surface-panel-muted)/40 px-0.5 py-1 transition-colors duration-200 motion-reduce:duration-150"
             >
-              <span className="text-[10px] font-bold leading-none text-(--color-primary)">{letter}</span>
-              <span className="mt-0.5 text-[10px] font-medium tabular-nums leading-none text-muted">
+              <span className="text-[10px] sm:text-xs font-bold leading-none text-(--color-primary)">{letter}</span>
+              <span className="mt-0.5 text-[10px] sm:text-xs font-medium tabular-nums leading-none text-muted">
                 {counts[key]}
               </span>
             </div>
           ))}
         </div>
-        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-border/50 bg-(--color-surface-panel-muted)/50 px-2 py-1 shadow-inner transition-transform duration-300 motion-reduce:duration-150">
-          <span className="text-base leading-none opacity-90" aria-hidden>
-            🎲
-          </span>
-          <span className="text-xs font-semibold tabular-nums text-on-surface">{diceTotal}</span>
+        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-border/50 bg-(--color-surface-panel-muted)/50 px-2 sm:px-3 py-1 sm:py-1.5 shadow-inner transition-transform duration-300 motion-reduce:duration-150">
+          <span className="text-base sm:text-lg leading-none opacity-90" aria-hidden>🎲</span>
+          <span className="text-xs sm:text-sm font-semibold tabular-nums text-on-surface">{diceTotal}</span>
         </div>
       </div>
       <WallSparkle tilesLeft={tilesLeft} />
-      <p className="mt-1 text-center text-[10px] font-semibold tabular-nums tracking-wide text-muted transition-colors duration-200">
+      <p className="mt-1 text-center text-[10px] sm:text-xs font-semibold tabular-nums tracking-wide text-muted transition-colors duration-200">
         {tilesLeft} in wall
       </p>
     </div>

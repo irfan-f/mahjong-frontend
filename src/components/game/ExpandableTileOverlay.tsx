@@ -81,7 +81,7 @@ export const AllTilesButton = ({
   </button>
 );
 
-const POPOVER_W = 352; // matches w-[min(22rem,90vw)] at 22rem
+const POPOVER_W = 352;
 const EDGE_GAP = 8;
 
 export interface TilePopoverProps {
@@ -106,7 +106,6 @@ export function TilePopover({ open, onClose, anchorRef, children, align = 'start
     const viewH = window.innerHeight;
     const viewW = window.innerWidth;
     const openUp = r.top > viewH * 0.55;
-    // Always resolve to a `left` value so we can clamp within the viewport.
     const rawLeft = align === 'end' ? r.right - POPOVER_W : r.left;
     const left = Math.max(EDGE_GAP, Math.min(rawLeft, viewW - POPOVER_W - EDGE_GAP));
     setPos({
@@ -128,7 +127,6 @@ export function TilePopover({ open, onClose, anchorRef, children, align = 'start
       if (outsidePopover && outsideAnchor) onClose();
     };
     document.addEventListener('keydown', onKey);
-    // Use capture so we see the event before React synthetic handlers
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => {
       document.removeEventListener('keydown', onKey);
