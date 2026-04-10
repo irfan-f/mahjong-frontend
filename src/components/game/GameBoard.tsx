@@ -687,17 +687,19 @@ export function GameBoard({
     setConcealedSelectedIndices(nextIndices);
   };
 
+  const meldTileSizeClass = 'h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6 xl:h-11 xl:w-7';
+
   const renderMeldTiles = (meld: PlayerMeld, isOwner: boolean) => {
     if (meld.tiles && (isOwner || meld.visibility !== 'concealed')) {
       return meld.tiles.map((t, ti) => (
-        <TileView key={ti} tile={t} className="h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6" />
+        <TileView key={ti} tile={t} className={meldTileSizeClass} />
       ));
     }
     const count = meld.tileCount ?? meld.tiles?.length ?? 0;
     return (
       <>
         {Array.from({ length: count }).map((_, idx) => (
-          <TileBackView key={idx} className="h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6" aria-hidden />
+          <TileBackView key={idx} className={meldTileSizeClass} aria-hidden />
         ))}
         <span className="text-[10px] text-muted w-full text-center">Concealed x{count}</span>
       </>
@@ -824,7 +826,7 @@ export function GameBoard({
     concealedMode != null;
 
   const handTileSizeClass =
-    'h-[clamp(2.65rem,3.5vw+2rem,3.5rem)] w-[clamp(1.75rem,2.5vw+1.05rem,2.5rem)] sm:h-14 sm:w-10 lg:h-16 lg:w-11';
+    'h-[clamp(2.65rem,3.5vw+2rem,3.5rem)] w-[clamp(1.75rem,2.5vw+1.05rem,2.5rem)] sm:h-14 sm:w-10 lg:h-[clamp(4rem,4.5vw,5.5rem)] lg:w-[clamp(2.8rem,3.1vw,3.875rem)] xl:h-20 xl:w-14';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1192,7 +1194,7 @@ export function GameBoard({
           </>
         )}
         {init.tilesDealt && !isEnded && canDeclareMahjong && isMyTurn && (
-          <p className="text-center text-sm font-medium text-on-surface" role="status">
+          <p className="text-center text-sm lg:text-base font-semibold text-on-surface" role="status">
             {meldCallReady || !canDefineMelds
               ? 'You can win!'
               : `You can win, but declare your melds first (${declaredMeldsCount}/4)`}
@@ -1203,7 +1205,7 @@ export function GameBoard({
         {init.tilesDealt && (myHand.length > 0 || myMelds.length > 0) && (
           <section
             aria-label={isEnded ? 'Your winning hand' : 'Your hand'}
-            className="flex min-w-0 flex-col gap-2 rounded-b-xl max-sm:flex max-sm:flex-col sm:block sm:gap-0"
+            className="flex min-w-0 flex-col gap-2 sm:gap-0"
             data-tutorial-anchor="hand"
           >
             {init.tilesDealt && !isTutorial ? (
@@ -1264,10 +1266,10 @@ export function GameBoard({
                 ) : null}
               </div>
             ) : null}
-            <div className="mb-2 flex min-h-8 max-sm:contents items-start justify-between gap-2 sm:mb-2 sm:flex sm:flex-row">
+            <div className="mb-2 flex min-h-8 max-sm:contents items-start justify-between gap-2 sm:mb-3 lg:mb-4 sm:flex sm:flex-row">
               <div
                 aria-label="Your melds"
-                className={`flex min-w-0 flex-1 flex-col items-start gap-1 max-sm:order-3 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pr-0.5 sm:min-w-[8rem] lg:min-w-[10rem] ${
+                className={`flex min-w-0 flex-1 flex-col items-start gap-1 max-sm:order-3 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pr-0.5 sm:min-w-[8rem] lg:min-w-[11rem] xl:min-w-[13rem] xl:max-w-[22rem] ${
                   !isTutorial && mobileDockSection !== 'melds' ? 'max-sm:hidden' : ''
                 } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
               >
@@ -1275,7 +1277,7 @@ export function GameBoard({
                   const myMeldCounts = getMeldCountParts(myMelds);
                   return (
                     <div className="flex w-full items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-muted">
+                      <span className="text-xs lg:text-sm font-medium text-muted">
                         Melds
                         {myMeldCounts.base > 0 || myMeldCounts.kongBonus > 0
                           ? ` (${myMeldCounts.base}${myMeldCounts.kongBonus > 0 ? ` +${myMeldCounts.kongBonus}` : ''})`
@@ -1332,24 +1334,24 @@ export function GameBoard({
                 }`}
               >
                 {isEnded ? (
-                  <span className="text-sm font-medium text-on-surface text-center">
+                  <span className="text-sm lg:text-base font-medium text-on-surface text-center">
                     {iWon ? 'Your winning hand' : 'Your hand'}
                   </span>
                 ) : chowPickMode ? (
                   <p
-                    className="text-sm text-center text-on-surface font-medium inline-flex items-center gap-2 max-w-56 sm:max-w-none"
+                    className="text-sm lg:text-base text-center text-on-surface font-medium inline-flex items-center gap-2 max-w-56 sm:max-w-none"
                     aria-live="polite"
                   >
                     {acting && <Spinner className="w-4 h-4" />}
                     Select two tiles that complete a chow with the last discard, then confirm.
                   </p>
                 ) : isMyTurn && game.turnState.tileDrawn ? (
-                <p className="text-sm text-center inline-flex items-center gap-2">
+                <p className="text-sm lg:text-base text-center inline-flex items-center gap-2">
                   {acting && <Spinner className="w-4 h-4" />}
                   {isTutorial && tutorialDiscardTile != null ? (
                     <span className="text-on-surface font-medium">Tap the tile marked “Discard” below</span>
                   ) : (
-                    <span className="text-muted">Choose a tile to discard</span>
+                    <span className="text-muted font-medium">Choose a tile to discard</span>
                   )}
                   {!isTutorial && selectedDiscardIndex != null && (
                     <button
@@ -1360,20 +1362,20 @@ export function GameBoard({
                         setSelectedDiscardIndex(null);
                       }}
                       disabled={acting || !myHand[selectedDiscardIndex]}
-                      className="btn-secondary inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-xs"
+                      className="btn-secondary inline-flex items-center justify-center gap-1.5 px-3 py-1 text-xs lg:text-sm"
                       aria-label="Confirm discard"
                       title="Confirm discard"
                     >
-                      <Icon src={icons.check} className="size-4 [&_.icon-svg]:size-4" aria-hidden />
+                      <Icon src={icons.check} className="size-4 lg:size-5 [and_dot_icon-svg]:size-4" aria-hidden />
                       Confirm
                     </button>
                   )}
                 </p>
                 ) : (
-                  <span className="text-sm font-medium text-muted text-center">Your hand</span>
+                  <span className="text-sm lg:text-base font-medium text-muted text-center">Your hand</span>
                 )}
               <div className="flex items-center gap-2">
-                <span className="text-muted text-xs">
+                <span className="text-muted text-xs lg:text-sm">
                   Tiles{myHand.length > 0 ? ` (${myHand.length})` : ''}
                 </span>
                 {!isTutorial && myHand.length > 1 ? (
@@ -1394,7 +1396,7 @@ export function GameBoard({
                       setHandOrder(indices.map((idx) => tokens[idx]!).filter(Boolean));
                     }}
                     disabled={acting}
-                    className="btn-secondary max-sm:hidden px-2 py-1 text-[11px] leading-none"
+                    className="btn-secondary max-sm:hidden px-2 py-1 text-[11px] lg:text-sm leading-none"
                     aria-label="Sort hand"
                     title="Sort hand"
                   >
@@ -1405,12 +1407,12 @@ export function GameBoard({
               </div>
               <div
                 aria-label="Your discards"
-                className={`flex min-w-0 flex-1 flex-col items-end gap-1 max-sm:order-4 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-0.5 sm:min-w-[8rem] lg:min-w-[10rem] ${
+                className={`flex min-w-0 flex-1 flex-col items-end gap-1 max-sm:order-4 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-0.5 sm:min-w-[8rem] lg:min-w-[11rem] xl:min-w-[13rem] xl:max-w-[22rem] ${
                   !isTutorial && mobileDockSection !== 'discards' ? 'max-sm:hidden' : ''
                 } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
               >
                 <div className="flex w-full items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted">
+                  <span className="text-xs lg:text-sm font-medium text-muted">
                     Discards{myDiscards.length > 0 ? ` (${myDiscards.length})` : ''}
                   </span>
                   {myDiscards.length > MAX_PREVIEW_TILES && (
@@ -1430,7 +1432,7 @@ export function GameBoard({
                         <TileView
                           key={`${t._type}-${String(t.value)}-${i}`}
                           tile={t}
-                          className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7"
+                          className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7 xl:h-12 xl:w-[2.0625rem]"
                         />
                       ))}
                     </div>
@@ -1440,7 +1442,7 @@ export function GameBoard({
                           <TileView
                             key={i}
                             tile={t}
-                            className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7"
+                            className="h-[clamp(2rem,2.5vw+1.5rem,2.5rem)] w-[clamp(1.4rem,2vw+1rem,1.75rem)] sm:h-10 sm:w-7 xl:h-12 xl:w-[2.0625rem]"
                           />
                         ))}
                       </div>
@@ -1450,7 +1452,7 @@ export function GameBoard({
               </div>
             </div>
             <div
-              className={`flex min-h-14 max-sm:order-5 flex-wrap items-end justify-start gap-1 overflow-x-auto overflow-y-visible pt-1.5 pb-1 sm:justify-center sm:pt-2 ${
+              className={`flex min-h-14 max-sm:order-5 flex-wrap items-end justify-start gap-1 overflow-x-auto overflow-y-visible pt-1.5 pb-1 sm:justify-center sm:gap-1.5 sm:overflow-visible sm:pt-3 sm:pb-2 lg:gap-2 lg:rounded-xl lg:border lg:border-border/30 lg:bg-surface-panel-muted/25 lg:px-4 lg:pt-5 lg:pb-5 xl:gap-2.5 xl:px-6 xl:pt-7 xl:pb-6 ${
                 !showMobileHandPanel ? 'max-sm:hidden' : ''
               }`}
               role="tabpanel"

@@ -26,26 +26,6 @@
       html, body { background-color: #faf9f7; }
       html.dark body { background-color: #011627; }
     </style>
-    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
-    <script>
-      (function () {
-        var params = new URLSearchParams(window.location.search);
-        var captureId = params.get("figmacapture");
-        var endpoint = params.get("figmaendpoint");
-        if (!captureId || !endpoint) return;
-
-        var delay = Number(params.get("figmadelay") || "1000");
-        window.setTimeout(function () {
-          try {
-            if (window.figma && window.figma.captureForDesign) {
-              window.figma.captureForDesign({ captureId: captureId, endpoint: endpoint, selector: "body" });
-            }
-          } catch (e) {
-            // no-op: capture is best-effort and should never block the app
-          }
-        }, isFinite(delay) ? delay : 1000);
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

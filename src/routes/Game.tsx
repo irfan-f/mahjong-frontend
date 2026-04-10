@@ -99,12 +99,10 @@ export function Game() {
         break;
       }
       if (!stepped) break;
-      // Show this bot action before the next step.
       await refreshGameState();
       await sleep(BOT_STEP_DELAY_MS);
       stepsDriven += 1;
     }
-    // Final refresh to make sure we're in sync after the loop.
     await refreshGameState();
   }, [gameId, getIdToken, refreshGameState]);
 
@@ -120,7 +118,6 @@ export function Game() {
     void refreshGameStateRef.current({ finishLoading: true });
   }, [gameId]);
 
-  // Fallback poll: while not acting, keep the UI up to date (covers reconnects etc.).
   useEffect(() => {
     if (!gameId) return;
     const interval = setInterval(() => {

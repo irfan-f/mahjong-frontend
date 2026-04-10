@@ -128,7 +128,6 @@ export function WhatIfModal({
         playerMelds,
         playerDiscards,
         lastDiscardedTile: selfDraw ? null : (game?.lastDiscardedTile ?? null),
-        // Compatibility for any fallback callers still reading legacy shape.
         winnerExposedMelds: [],
         selfDraw,
         discarderId: selfDraw ? null : playerIds[1] ?? null,

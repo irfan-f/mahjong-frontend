@@ -336,10 +336,18 @@
     color: white;
     border-radius: 0.75rem;
     padding: 0.625rem 1.25rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     min-height: 44px;
     cursor: pointer;
     transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  @media (min-width: 1024px) {
+    .btn-primary {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      min-height: 48px;
+    }
   }
   .btn-primary:hover:not(:disabled) {
     background-color: var(--color-primary-hover);
@@ -357,10 +365,18 @@
     color: var(--color-primary);
     border-radius: 0.75rem;
     padding: 0.625rem 1.25rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     min-height: 44px;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  @media (min-width: 1024px) {
+    .btn-secondary {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      min-height: 48px;
+    }
   }
   .btn-secondary:hover:not(:disabled) {
     background-color: var(--color-secondary);

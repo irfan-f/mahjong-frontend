@@ -69,24 +69,24 @@ export function OpponentSeatCard({
 
   const positionClass =
     position === 'top'
-      ? 'absolute top-1 left-1/2 z-10 w-[min(100%,28rem)] -translate-x-1/2 lg:w-[min(100%,34rem)]'
+      ? 'absolute top-1 left-1/2 z-10 w-[min(100%,28rem)] -translate-x-1/2 lg:w-[min(100%,44rem)] xl:w-[min(100%,56rem)]'
       : position === 'left'
-        ? 'absolute left-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,22vw)] lg:w-[min(13rem,18vw)]'
+        ? 'absolute left-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[clamp(9.5rem,14vw,14rem)] lg:w-[clamp(11rem,14vw,20rem)] xl:w-[clamp(13rem,13vw,24rem)]'
         : position === 'right'
-          ? 'absolute right-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[min(10.5rem,22vw)] lg:w-[min(13rem,18vw)]'
+          ? 'absolute right-0.5 top-1/2 z-10 w-[min(10rem,40vw)] -translate-y-1/2 sm:w-[clamp(9.5rem,14vw,14rem)] lg:w-[clamp(11rem,14vw,20rem)] xl:w-[clamp(13rem,13vw,24rem)]'
           : '';
 
   const wrapperClass =
     position === 'grid'
       ? 'relative'
       : position === 'top-flow'
-        ? 'relative z-10 w-full shrink-0 sm:mx-auto sm:w-[min(100%,28rem)] lg:w-[min(100%,34rem)]'
+        ? 'relative z-10 w-full shrink-0 sm:mx-auto sm:w-[min(100%,30rem)] lg:w-[min(100%,44rem)] xl:w-[min(100%,56rem)]'
         : `${positionClass} max-sm:static max-sm:translate-none max-sm:left-auto max-sm:right-auto max-sm:top-auto max-sm:w-full`;
 
   return (
     <div
       data-tutorial-anchor={tutorialAnchor}
-      className={`${wrapperClass} panel flex flex-col gap-2 overflow-visible rounded-xl p-2 sm:p-3 ${
+      className={`${wrapperClass} panel flex flex-col gap-2 overflow-visible rounded-xl p-2 sm:p-3 lg:p-4 ${
         position === 'grid' ? 'relative' : ''
       } ${isCurrent ? 'ring-2 ring-(--color-ring-focus) ring-offset-2 ring-offset-(--color-surface)' : ''}`}
     >
@@ -94,9 +94,9 @@ export function OpponentSeatCard({
         className={
           isSideSeat
             ? position === 'right'
-              ? 'flex min-h-8 flex-col items-end gap-3'
-              : 'flex min-h-8 flex-col items-stretch gap-3'
-            : 'flex min-h-8 items-start justify-between gap-1.5'
+              ? 'flex min-h-8 flex-col items-end gap-3 lg:gap-4'
+              : 'flex min-h-8 flex-col items-stretch gap-3 lg:gap-4'
+            : 'flex min-h-8 items-start justify-between gap-1.5 lg:gap-3'
         }
       >
         <div
@@ -105,7 +105,7 @@ export function OpponentSeatCard({
           } ${isSideSeat && position === 'right' ? 'items-end' : ''}`}
         >
           <div className={`flex w-full items-center justify-between gap-2 ${isSideSeat ? '' : 'max-sm:max-w-48'}`}>
-            <span className="text-xs font-medium text-muted">
+            <span className="text-xs lg:text-sm font-medium text-muted">
               Melds
               {meldCounts.base > 0 || meldCounts.kongBonus > 0
                 ? ` (${meldCounts.base}${meldCounts.kongBonus > 0 ? ` +${meldCounts.kongBonus}` : ''})`
@@ -164,7 +164,7 @@ export function OpponentSeatCard({
           }`}
         >
           <span
-            className={`w-full truncate text-sm font-medium ${
+            className={`w-full truncate text-sm lg:text-base font-semibold text-on-surface ${
               isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
             }`}
           >
@@ -172,7 +172,7 @@ export function OpponentSeatCard({
           </span>
           {wind ? (
             <span
-              className={`text-[10px] leading-tight text-muted ${
+              className={`text-[10px] sm:text-xs lg:text-xs leading-tight text-muted ${
                 isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
               }`}
             >
@@ -181,7 +181,7 @@ export function OpponentSeatCard({
             </span>
           ) : isDealer ? (
             <span
-              className={`text-[10px] leading-tight text-muted ${
+              className={`text-[10px] sm:text-xs lg:text-xs leading-tight text-muted ${
                 isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
               }`}
             >
@@ -189,7 +189,7 @@ export function OpponentSeatCard({
             </span>
           ) : null}
           {hand.length > 0 ? (
-            <span className="text-xs text-muted">Hand ({hand.length})</span>
+            <span className="text-xs lg:text-sm text-muted">Hand ({hand.length})</span>
           ) : null}
         </div>
         <div
@@ -202,7 +202,7 @@ export function OpponentSeatCard({
           }`}
         >
           <div className="flex w-full items-center justify-between gap-2">
-            <span className="text-xs font-medium text-muted">
+            <span className="text-xs lg:text-sm font-medium text-muted">
               Discards{discards.length > 0 ? ` (${discards.length})` : ''}
             </span>
             {hasMoreDiscards && (
@@ -219,13 +219,13 @@ export function OpponentSeatCard({
             <>
               <div className={`flex flex-wrap gap-0.5 ${discardsRowJustify}`}>
                 {previewDiscards.map((t, i) => (
-                  <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
+                  <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
                 ))}
               </div>
               <TilePopover open={discardOverlayOpen} onClose={() => setDiscardOverlayOpen(false)} anchorRef={discardBtnRef} align="end">
                 <div className="flex flex-wrap gap-1">
                   {discards.map((t, i) => (
-                    <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
+                    <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
                   ))}
                 </div>
               </TilePopover>
@@ -235,10 +235,10 @@ export function OpponentSeatCard({
       </div>
       {isEnded && hand.length > 0 && (
         <div className="flex w-full flex-col gap-1 border-t border-border pt-1" aria-label={`${label} hand`}>
-          <span className="text-xs font-medium text-muted">Hand</span>
+          <span className="text-xs lg:text-sm font-medium text-muted">Hand</span>
           <div className="flex flex-wrap justify-center gap-0.5">
             {hand.map((t: Tile, i: number) => (
-              <TileView key={i} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem]" />
+              <TileView key={i} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
             ))}
           </div>
         </div>

@@ -22,7 +22,6 @@ export default defineConfig([
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'react-refresh/only-export-components': 'off',
-      // Legitimate for layout measurement, derived UI resets, and reconciling hand order.
       'react-hooks/set-state-in-effect': 'off',
     },
   },
