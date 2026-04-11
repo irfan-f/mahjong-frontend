@@ -79,7 +79,7 @@ function WallTableInner({ tilesLeft, totalWallTiles = 136, diceTotal, cutIndex }
           <div className="flex flex-col items-center justify-center gap-0.5 px-2 lg:px-3 py-1.5 lg:py-2 rounded-xl bg-(--color-surface-panel-muted)/60 border border-border/50 min-w-[4.5rem] lg:min-w-[6.5rem] shrink-0">
             <span className="text-base lg:text-2xl leading-none opacity-80" aria-hidden>🎲</span>
             <span className="text-xs lg:text-base font-semibold tabular-nums text-on-surface">{diceTotal}</span>
-            <span className="text-[0.625rem] lg:text-xs text-muted tabular-nums">{tilesLeft} left</span>
+            <span className="text-[0.625rem] lg:text-xs text-muted tabular-nums">{tilesLeft} tiles left</span>
           </div>
           <div className="flex flex-col items-center gap-0.5 min-w-[3.5rem] lg:min-w-[5.5rem]">
             <span className="text-[0.625rem] lg:text-xs font-medium text-muted">South</span>

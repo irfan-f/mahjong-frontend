@@ -6,9 +6,8 @@ const WIND_SHORT: Record<string, string> = { east: 'E', south: 'S', west: 'W', n
 const DRAGON_SHORT: Record<string, string> = { red: '中', green: '發', white: '白' };
 
 function tileCompactLabel(tile: Tile): string {
-  if (tile._type === 'character') return `${String(tile.value)}m`;
-  if (tile._type === 'dot') return `${String(tile.value)}p`;
-  if (tile._type === 'stick') return `${String(tile.value)}s`;
+  if (tile._type === 'character' || tile._type === 'dot' || tile._type === 'stick')
+    return String(tile.value);
   if (tile._type === 'wind') return WIND_SHORT[tile.value] ?? String(tile.value);
   if (tile._type === 'dragon') return DRAGON_SHORT[tile.value] ?? String(tile.value);
   return '';
@@ -39,7 +38,8 @@ export function TileBackView({
       <img
         src={src}
         alt=""
-        className="h-full w-full object-contain"
+        draggable={false}
+        className="h-full w-full object-contain select-none"
         loading="lazy"
         onError={(e) => {
           const target = e.currentTarget;
@@ -60,7 +60,7 @@ export function TileBackView({
 
   return (
     <span
-      className={`inline-flex items-center justify-center overflow-hidden ${tileFace} ${className}`}
+      className={`inline-flex items-center justify-center overflow-hidden select-none ${tileFace} ${className}`}
       title={effectiveTitle}
       {...(ariaHidden ? { 'aria-hidden': true } : { 'aria-label': ariaLabel, role: 'img' })}
     >
@@ -105,7 +105,8 @@ export function TileView({
       <img
         src={src}
         alt=""
-        className="h-full w-full object-contain"
+        draggable={false}
+        className="h-full w-full object-contain select-none"
         loading="lazy"
         onError={(e) => {
           const target = e.currentTarget;
@@ -150,7 +151,7 @@ export function TileView({
         aria-label={effectiveAriaLabel}
         title={effectiveTitle}
         aria-pressed={selected ? true : undefined}
-        className={`cursor-pointer inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-[transform,box-shadow,border-color] duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
+        className={`cursor-pointer select-none inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-[transform,box-shadow,border-color] duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
           selected ? selectedLift : ''
         }`}
       >
@@ -162,7 +163,7 @@ export function TileView({
   return (
     <span
       role="img"
-      className={`inline-flex items-center justify-center overflow-hidden ${tileFace} ${className}`}
+      className={`inline-flex items-center justify-center overflow-hidden select-none ${tileFace} ${className}`}
       title={effectiveTitle}
       aria-label={effectiveAriaLabel}
     >

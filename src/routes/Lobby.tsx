@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat } from '../api/endpoints';
@@ -22,6 +22,17 @@ export function Lobby() {
   const [error, setError] = useState<string | null>(null);
   const [addingBotSeat, setAddingBotSeat] = useState<number | null>(null);
   const [removingBotSeat, setRemovingBotSeat] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopyCode = () => {
+    if (!id) return;
+    navigator.clipboard.writeText(id).then(() => {
+      setCopied(true);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
 
   const displaySeats = (lobbyData: LobbyType): (string | null)[] => {
     if (Array.isArray(lobbyData.seats)) {
@@ -239,9 +250,20 @@ export function Lobby() {
 
         <section className="panel shrink-0 rounded-xl p-2.5 sm:p-3">
           <h2 className="mb-0.5 text-xs font-semibold text-muted sm:text-sm">Lobby code</h2>
-          <p className="select-all font-mono text-lg font-bold tracking-wider text-on-surface sm:text-xl">
-            {id}
-          </p>
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="group flex items-center gap-2 rounded-lg px-0 py-1 text-left transition-colors hover:text-(--color-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)"
+            aria-label={copied ? 'Copied!' : 'Copy lobby code'}
+            title={copied ? 'Copied!' : 'Click to copy'}
+          >
+            <span className="select-all font-mono text-lg font-bold tracking-wider text-on-surface group-hover:text-(--color-primary) sm:text-xl">
+              {id}
+            </span>
+            <span className="text-xs font-medium text-muted transition-colors group-hover:text-(--color-primary)" aria-hidden>
+              {copied ? '✓ Copied' : 'Copy'}
+            </span>
+          </button>
           <p className="mt-0.5 text-muted text-[11px] sm:text-xs">Share so friends can join</p>
         </section>
 
