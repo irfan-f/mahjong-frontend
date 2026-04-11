@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat } from '../api/endpoints';
+import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat, userSetup } from '../api/endpoints';
 import type { Lobby as LobbyType } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
@@ -107,6 +107,7 @@ export function Lobby() {
     setCreating(true);
     setError(null);
     try {
+      await userSetup(token, user?.displayName);
       const { gameId } = await createGame(id, token, DEFAULT_RULESET_ID);
       navigate(`/game/${gameId}`);
     } catch (e) {

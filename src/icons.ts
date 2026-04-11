@@ -9,6 +9,7 @@ import loginIcon from './assets/icons/login.svg?raw';
 import accountManageIcon from './assets/icons/account_manage.svg?raw';
 import menuIcon from './assets/icons/menu.svg?raw';
 import checkIcon from './assets/icons/check.svg?raw';
+import editIcon from './assets/icons/edit.svg?raw';
 
 export const icons = {
   delete: deleteIcon,
@@ -22,4 +23,5 @@ export const icons = {
   accountManage: accountManageIcon,
   menu: menuIcon,
   check: checkIcon,
+  edit: editIcon,
 } as const;
