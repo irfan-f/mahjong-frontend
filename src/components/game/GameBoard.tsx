@@ -8,13 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import { Link } from 'react-router-dom';
-import type { Game as GameType, LegalAction, PlayerMeld, Tile, WindTileValue } from '../../types';
+import type { Game as GameType, Lobby as LobbyType, LegalAction, PlayerMeld, Tile, WindTileValue } from '../../types';
 import type { TutorialStep } from '../../tutorial/tutorialSteps';
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   type DragEndEvent,
+  type DragStartEvent,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -55,8 +57,20 @@ const HAND_TILE_SIZES = [
   'h-14 w-10',
   'h-[4.25rem] w-[3rem]',
   'h-20 w-14',
+  'h-24 w-[4.25rem]',
+  'h-28 w-20',
 ] as const;
-const HAND_SCALE_LABELS = ['XS', 'S', 'M', 'L', 'XL'] as const;
+const HAND_SCALE_LABELS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'] as const;
+
+const MELD_DISCARD_TILE_SIZES = [
+  'h-5 w-3.5',
+  'h-6 w-4',
+  'h-7 w-5',
+  'h-9 w-[1.625rem]',
+  'h-11 w-7',
+  'h-14 w-10',
+] as const;
+const MELD_DISCARD_SCALE_LABELS = ['XS', 'S', 'M', 'L', 'XL', '2XL'] as const;
 
 const EMPTY_HAND: Tile[] = [];
 const EMPTY_MELODS: PlayerMeld[] = [];
@@ -178,18 +192,15 @@ function SortableHandTile({
   label: string;
   children: ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({ id, disabled });
 
-  // Pointer drag on the <li>; keyboard drag on the sr-only sibling button so
-  // Space/Enter on the tile button (discard) never starts a drag.
   const onPointerDown = listeners?.['onPointerDown'] as React.PointerEventHandler | undefined;
   const onKeyDown = listeners?.['onKeyDown'] as React.KeyboardEventHandler | undefined;
 
-  // Strip role/tabIndex from dnd-kit attrs — <li> uses its native semantics and
-  // the inner button owns focus.
-  const ariaAttributes = { ...attributes };
-  delete (ariaAttributes as { role?: unknown; tabIndex?: unknown }).role;
-  delete (ariaAttributes as { role?: unknown; tabIndex?: unknown }).tabIndex;
+  const ariaAttributes = { ...attributes } as Record<string, unknown>;
+  delete ariaAttributes['role'];
+  delete ariaAttributes['tabIndex'];
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -201,7 +212,12 @@ function SortableHandTile({
     <li
       ref={setNodeRef}
       style={style}
-      className={`list-none inline-flex flex-col items-center${isDragging ? ' opacity-60' : ''}`}
+      className={[
+        'list-none inline-flex flex-col items-center select-none relative',
+        isDragging ? 'opacity-0' : '',
+        !disabled && !isDragging ? 'cursor-grab active:cursor-grabbing' : '',
+        isOver && !isDragging ? 'after:absolute after:inset-y-0 after:-left-[3px] after:w-[3px] after:rounded-full after:bg-(--color-primary)/70' : '',
+      ].filter(Boolean).join(' ')}
       onPointerDown={onPointerDown}
       {...ariaAttributes}
     >
@@ -298,11 +314,12 @@ interface ClaimTileGroupProps {
   label: string;
   discardIndex?: number;
   selected: boolean;
+  dimmed?: boolean;
   onPress: () => void;
   disabled: boolean;
 }
 
-function ClaimTileGroup({ tiles, label, discardIndex = -1, selected, onPress, disabled }: ClaimTileGroupProps) {
+function ClaimTileGroup({ tiles, label, discardIndex = -1, selected, dimmed, onPress, disabled }: ClaimTileGroupProps) {
   return (
     <button
       type="button"
@@ -314,7 +331,7 @@ function ClaimTileGroup({ tiles, label, discardIndex = -1, selected, onPress, di
         selected
           ? 'border-(--color-primary) bg-(--color-primary)/10 shadow-md ring-1 ring-(--color-primary)/30'
           : 'border-border/60 bg-surface-panel hover:border-(--color-primary)/50 hover:bg-surface-panel-muted/40'
-      } disabled:cursor-not-allowed disabled:opacity-50`}
+      } ${dimmed ? 'opacity-35' : ''} disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <div className="flex gap-0.5">
         {tiles.map((t, i) => (
@@ -356,6 +373,8 @@ export interface GameBoardProps {
   onConcealedKong?: (tile: Tile) => void | Promise<void>;
   onOpenWhatIf?: () => void;
   onStartNewGame?: () => void;
+  startingNewGame?: boolean;
+  lobby?: LobbyType | null;
   mode?: 'standard' | 'tutorial';
   tutorialAllowedActions?: TutorialStep['allowedActions'];
   onShowHandChange?: (showHand: boolean) => Promise<void>;
@@ -384,6 +403,8 @@ export function GameBoard({
   onConcealedKong = async () => {},
   onOpenWhatIf,
   onStartNewGame,
+  startingNewGame = false,
+  lobby = null,
   mode = 'standard',
   tutorialAllowedActions,
   onShowHandChange,
@@ -570,9 +591,15 @@ export function GameBoard({
     const n = saved !== null ? Number(saved) : 2;
     return Number.isFinite(n) && n >= 0 && n < HAND_TILE_SIZES.length ? n : 2;
   });
+  const [meldDiscardScale, setMeldDiscardScale] = useState<number>(() => {
+    const saved = localStorage.getItem('mahjong-meld-scale');
+    const n = saved !== null ? Number(saved) : 2;
+    return Number.isFinite(n) && n >= 0 && n < MELD_DISCARD_TILE_SIZES.length ? n : 2;
+  });
   const [showTileLabel, setShowTileLabel] = useState<boolean>(() => {
     return localStorage.getItem('mahjong-tile-labels') === '1';
   });
+  const [opponentNumbersOnly, setOpponentNumbersOnly] = useState(false);
   const [concealedMode, setConcealedMode] = useState<'pong' | 'chow' | 'kong' | null>(null);
   const [concealedSelectedIndices, setConcealedSelectedIndices] = useState<number[]>([]);
   const [selectedClaimGroup, setSelectedClaimGroup] = useState<SelectedClaimGroup | null>(null);
@@ -629,9 +656,11 @@ export function GameBoard({
     selectedDiscardIndex,
   ]);
 
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { delay: 250, tolerance: 6 },
+      activationConstraint: { delay: 150, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -645,7 +674,19 @@ export function GameBoard({
     (isTutorial && tutorialDiscardTile != null) ||
     (isMyTurn && game.turnState.tileDrawn && selectedDiscardIndex != null);
 
+  const activeTile = useMemo(() => {
+    if (!activeDragId) return null;
+    const pos = handOrder.indexOf(activeDragId);
+    const tileIdx = orderedHandIndices[pos];
+    return tileIdx != null ? (myHand[tileIdx] ?? null) : null;
+  }, [activeDragId, handOrder, orderedHandIndices, myHand]);
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveDragId(String(active.id));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     const { active, over } = event;
     if (!over) return;
     const a = String(active.id);
@@ -667,24 +708,28 @@ export function GameBoard({
     if (concealedMode !== null) setMobileDockSection('hand');
   }, [concealedMode]);
 
-  // Claim-window countdown — ticks every 500 ms while a deadline is active.
   const [claimSecondsLeft, setClaimSecondsLeft] = useState<number | null>(null);
   const [claimWindowTotalSeconds, setClaimWindowTotalSeconds] = useState(30);
   useEffect(() => {
     const deadline = game.claimWindowEndsAt ? Date.parse(game.claimWindowEndsAt) : null;
-    if (!deadline || !showClaimButtons) {
+    if (!deadline) {
       setClaimSecondsLeft(null);
       return;
     }
-    const initialRemaining = Math.max(1, Math.ceil((deadline - Date.now()) / 1000));
+    const initialRemaining = Math.ceil((deadline - Date.now()) / 1000);
+    if (initialRemaining <= 0) {
+      setClaimSecondsLeft(null);
+      return;
+    }
     setClaimWindowTotalSeconds(initialRemaining);
     const tick = () => {
-      setClaimSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+      const remaining = Math.ceil((deadline - Date.now()) / 1000);
+      setClaimSecondsLeft(remaining > 0 ? remaining : null);
     };
     tick();
     const id = setInterval(tick, 500);
     return () => clearInterval(id);
-  }, [game.claimWindowEndsAt, showClaimButtons]);
+  }, [game.claimWindowEndsAt]);
 
   const pongMeldPreview = useMemo((): Tile[] | null => {
     if (!canClaimPong || !game.lastDiscardedTile) return null;
@@ -817,29 +862,36 @@ export function GameBoard({
     });
   };
 
-  const meldTileSizeClass = 'h-7 w-5 sm:h-8 sm:w-[1.375rem] lg:h-9 lg:w-6 xl:h-11 xl:w-7';
+  const changeMeldDiscardScale = (delta: number) => {
+    setMeldDiscardScale((prev) => {
+      const next = Math.max(0, Math.min(MELD_DISCARD_TILE_SIZES.length - 1, prev + delta));
+      localStorage.setItem('mahjong-meld-scale', String(next));
+      return next;
+    });
+  };
+
+  const meldTileSizeClass = MELD_DISCARD_TILE_SIZES[meldDiscardScale]!;
+  const discardTileSizeClass = MELD_DISCARD_TILE_SIZES[meldDiscardScale]!;
+
+  const claimedDiscardKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!game.playerMelds) return keys;
+    for (const melds of Object.values(game.playerMelds)) {
+      for (const meld of melds) {
+        if (meld.source === 'discard-claim' && meld.tiles && meld.claimedTileIndex != null) {
+          const t = meld.tiles[meld.claimedTileIndex];
+          if (t) keys.add(`${t._type}-${String(t.value)}`);
+        }
+      }
+    }
+    return keys;
+  }, [game.playerMelds]);
 
   const renderMeldTiles = (meld: PlayerMeld, isOwner: boolean) => {
     if (meld.tiles && (isOwner || meld.visibility !== 'concealed')) {
-      const claimIdx = meld.source === 'discard-claim' ? meld.claimedTileIndex : null;
-      return meld.tiles.map((t, ti) => {
-        const tileEl = <TileView key={ti} tile={t} className={meldTileSizeClass} />;
-        if (ti !== claimIdx) return tileEl;
-        return (
-          <div
-            key={ti}
-            className="relative inline-flex"
-            title={`Picked up — ${tileToLabel(t)}`}
-          >
-            {tileEl}
-            <span
-              className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)"
-              aria-hidden
-            />
-            <span className="sr-only">Picked up: {tileToLabel(t)}</span>
-          </div>
-        );
-      });
+      return meld.tiles.map((t, ti) => (
+        <TileView key={ti} tile={t} className={meldTileSizeClass} />
+      ));
     }
     const count = meld.tileCount ?? meld.tiles?.length ?? 0;
     return Array.from({ length: count }).map((_, idx) => (
@@ -850,6 +902,12 @@ export function GameBoard({
   const getPlayerLabel = (pid: string, fallbackIndex?: number) => {
     if (pid === currentUserId) {
       return currentUserDisplayName ?? 'You';
+    }
+    if (opponentNumbersOnly) {
+      const idx =
+        fallbackIndex !== undefined && fallbackIndex >= 0 ? fallbackIndex : opponentIds.indexOf(pid);
+      if (idx >= 0) return `Opponent ${idx + 1}`;
+      return 'Opponent';
     }
     const name = game.playerDisplayNames?.[pid];
     if (name) return name;
@@ -901,9 +959,12 @@ export function GameBoard({
           Total: {(lastScoringResult?.points ?? game.points) ?? 0} points
         </p>
       )}
-      {(lastScoringResult?.breakdown ?? game.breakdown) && (lastScoringResult?.breakdown ?? game.breakdown)!.length > 0 && (
+      {(() => {
+        const breakdown = lastScoringResult?.breakdown ?? game.breakdown;
+        if (!breakdown?.length) return null;
+        return (
         <ul className="list-none flex flex-col gap-1 px-2 text-center text-sm text-muted" aria-label="Scoring breakdown">
-          {(lastScoringResult?.breakdown ?? game.breakdown)!.map((entry, i) => {
+          {breakdown.map((entry, i) => {
             const label = entry.patternNameRomanized
               ? `${entry.patternNameEn ?? entry.pattern} (${entry.patternNameRomanized})`
               : (entry.patternNameEn ?? entry.pattern);
@@ -914,20 +975,8 @@ export function GameBoard({
             );
           })}
         </ul>
-      )}
-      {game.scores && game.playerIds && Object.keys(game.scores).length > 0 && (
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted">
-          {game.playerIds.map((pid) => {
-            const score = game.scores?.[pid];
-            const label = getPlayerLabel(pid, opponentIds.indexOf(pid));
-            return (
-              <span key={pid}>
-                {label}: <strong className="text-on-surface">{score ?? 0}</strong>
-              </span>
-            );
-          })}
-        </div>
-      )}
+        );
+      })()}
       {mode === 'standard' && currentUserId && onShowHandChange && (
         <label className="flex cursor-pointer items-center justify-center gap-2 text-sm text-on-surface">
           <input
@@ -946,26 +995,58 @@ export function GameBoard({
         </label>
       )}
       {mode === 'standard' && (
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="w-full flex flex-col items-center gap-3">
+          {game.playerIds && game.playerIds.length > 0 && (
+            <div className="grid w-full grid-cols-2 gap-2">
+              {game.playerIds.map((pid, i) => {
+                const label = getPlayerLabel(pid, opponentIds.indexOf(pid));
+                const score = game.scores?.[pid] ?? 0;
+                const wins = lobby?.wins?.[pid];
+                const isWinner = pid === winnerId;
+                return (
+                  <div
+                    key={pid}
+                    className={`flex flex-col items-center gap-0.5 rounded-xl p-2.5 sm:p-3 ${
+                      isWinner
+                        ? 'bg-(--color-primary)/10 ring-1 ring-(--color-primary)/40'
+                        : 'bg-surface-panel'
+                    }`}
+                  >
+                    {isWinner && (
+                      <span className="text-xs font-bold text-(--color-primary)" aria-label="Winner">
+                        Winner
+                      </span>
+                    )}
+                    <span className="truncate w-full text-center text-sm font-semibold text-on-surface">
+                      {label}
+                    </span>
+                    <span className="text-xs text-muted" aria-label={`${score} points this game`}>
+                      {score} pts
+                    </span>
+                    {wins != null && (
+                      <span className="text-xs text-muted" aria-label={`${wins} total wins`}>
+                        {wins} {wins === 1 ? 'win' : 'wins'}
+                      </span>
+                    )}
+                    <span className="sr-only">{i === 0 ? '(you)' : ''}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {onStartNewGame && (
             <button
               type="button"
               onClick={onStartNewGame}
-              className="btn-primary inline-flex items-center justify-center gap-2"
-              aria-label="Play again in the same lobby"
-              title="Play again"
+              disabled={startingNewGame}
+              className="btn-primary inline-flex w-full max-w-xs items-center justify-center gap-2 py-3"
+              aria-label={startingNewGame ? 'Starting next game' : 'Start next game'}
+              title="Start next game"
             >
-              Play again
+              {startingNewGame && <Spinner />}
+              {startingNewGame ? 'Starting…' : 'Start next game'}
             </button>
           )}
-          <Link
-            to={`/lobby/${game.lobby_id}`}
-            className={onStartNewGame ? 'btn-secondary inline-flex items-center justify-center' : 'btn-primary inline-flex items-center justify-center'}
-            aria-label="Back to lobby"
-            title="Back to lobby"
-          >
-            Lobby
-          </Link>
           <Link
             to="/"
             className="btn-secondary inline-flex items-center justify-center"
@@ -1048,6 +1129,7 @@ export function GameBoard({
                     isBot={topPid.startsWith('ai:')}
                     renderMeldTiles={renderMeldTiles}
                     getMeldCountParts={getMeldCountParts}
+                    claimedDiscardKeys={claimedDiscardKeys}
                   />
                 );
               })()}
@@ -1071,6 +1153,7 @@ export function GameBoard({
                         isBot={pid.startsWith('ai:')}
                         renderMeldTiles={renderMeldTiles}
                         getMeldCountParts={getMeldCountParts}
+                        claimedDiscardKeys={claimedDiscardKeys}
                       />
                     );
                   })()}
@@ -1117,6 +1200,7 @@ export function GameBoard({
                         isBot={pid.startsWith('ai:')}
                         renderMeldTiles={renderMeldTiles}
                         getMeldCountParts={getMeldCountParts}
+                        claimedDiscardKeys={claimedDiscardKeys}
                       />
                     );
                   })()}
@@ -1182,6 +1266,7 @@ export function GameBoard({
                           expanded={expanded}
                           onAccordionToggle={handleOpponentAccordionToggle}
                           tutorialAnchor={wind ? tutorialAnchorForOpponentWind(wind) : undefined}
+                          claimedDiscardKeys={claimedDiscardKeys}
                         />
                         <AnimateExpand open={expanded}>
                           <div className="space-y-3 border-t border-border/30 bg-(--color-surface-panel-muted)/25 px-3 py-3 transition-colors duration-200 motion-reduce:duration-150">
@@ -1209,13 +1294,18 @@ export function GameBoard({
                                   Discards
                                 </span>
                                 <div className="flex flex-wrap gap-0.5">
-                                  {discards.map((t, i) => (
-                                    <TileView
-                                      key={`${t._type}-${String(t.value)}-${i}`}
-                                      tile={t}
-                                      className="h-8 w-6"
-                                    />
-                                  ))}
+                                  {discards.map((t, i) => {
+                                    const key = `${t._type}-${String(t.value)}-${i}`;
+                                    const isClaimed = i === discards.length - 1 && claimedDiscardKeys.has(`${t._type}-${String(t.value)}`);
+                                    if (!isClaimed) return <TileView key={key} tile={t} className="h-8 w-6" />;
+                                    return (
+                                      <div key={key} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
+                                        <TileView tile={t} className="h-8 w-6" />
+                                        <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
+                                        <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             ) : null}
@@ -1284,6 +1374,7 @@ export function GameBoard({
                 isBot={pid.startsWith('ai:')}
                 renderMeldTiles={renderMeldTiles}
                 getMeldCountParts={getMeldCountParts}
+                claimedDiscardKeys={claimedDiscardKeys}
               />
             ))}
           </section>
@@ -1316,7 +1407,6 @@ export function GameBoard({
               role="status"
             >
               <span className="font-medium text-on-surface">{isEnded ? 'Game over' : `${currentPlayerLabel}`}</span>
-              <span className="tabular-nums">Tiles left: <strong className="text-on-surface">{game.tilesLeft}</strong></span>
               {game.lastDiscardedTile && (
                 <span className="inline-flex items-center gap-1.5">
                   Last discard: <TileView tile={game.lastDiscardedTile} className="inline-block h-7 w-5 md:h-8 md:w-6 lg:h-9 lg:w-[1.625rem]" />
@@ -1329,9 +1419,6 @@ export function GameBoard({
             >
               <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-xs font-medium text-on-surface">
                 {isEnded ? 'Over' : currentPlayerLabel}
-              </span>
-              <span className="shrink-0 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-xs tabular-nums text-muted">
-                {game.tilesLeft} left
               </span>
               {game.lastDiscardedTile ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-panel-muted/90 px-2 py-0.5 text-xs text-muted">
@@ -1409,13 +1496,38 @@ export function GameBoard({
                 {(() => {
                   const myMeldCounts = getMeldCountParts(myMelds);
                   return (
-                    <div className="flex w-full items-center gap-2">
+                    <div className="flex w-full items-center justify-between gap-2">
                       <span className="text-xs md:text-sm lg:text-base font-medium text-muted">
                         Melds
                         {myMeldCounts.base > 0 || myMeldCounts.kongBonus > 0
                           ? ` (${myMeldCounts.base}${myMeldCounts.kongBonus > 0 ? ` +${myMeldCounts.kongBonus}` : ''})`
                           : ''}
                       </span>
+                      <div className="flex items-center gap-0.5" aria-label="Meld and discard tile size">
+                        <button
+                          type="button"
+                          onClick={() => changeMeldDiscardScale(-1)}
+                          disabled={meldDiscardScale === 0}
+                          className="inline-flex min-h-7 min-w-7 items-center justify-center rounded border border-border/60 bg-surface-panel-muted/50 text-xs font-medium text-on-surface disabled:opacity-40"
+                          aria-label="Decrease meld and discard tile size"
+                          title="Decrease meld/discard size"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[2ch] px-1 text-center text-xs text-muted tabular-nums">
+                          {MELD_DISCARD_SCALE_LABELS[meldDiscardScale]}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => changeMeldDiscardScale(1)}
+                          disabled={meldDiscardScale === MELD_DISCARD_TILE_SIZES.length - 1}
+                          className="inline-flex min-h-7 min-w-7 items-center justify-center rounded border border-border/60 bg-surface-panel-muted/50 text-xs font-medium text-on-surface disabled:opacity-40"
+                          aria-label="Increase meld and discard tile size"
+                          title="Increase meld/discard size"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   );
                 })()}
@@ -1552,8 +1664,20 @@ export function GameBoard({
                       : 'border-border/60 bg-surface-panel-muted/50 text-muted'
                   }`}
                 >
-                  <span aria-hidden>1m</span>
+                  <span aria-hidden>#</span>
                 </button>
+                {!isTutorial ? (
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-border/60 bg-surface-panel-muted/50 px-2 py-1.5 text-xs text-on-surface">
+                    <input
+                      type="checkbox"
+                      checked={opponentNumbersOnly}
+                      onChange={(e) => setOpponentNumbersOnly(e.target.checked)}
+                      className="rounded border-border"
+                      aria-label="Show opponent numbers only instead of names"
+                    />
+                    <span className="whitespace-nowrap select-none">Opponent #</span>
+                  </label>
+                ) : null}
               </div>
               </div>
               <div
@@ -1572,13 +1696,18 @@ export function GameBoard({
                 </div>
                 {myDiscards.length > 0 ? (
                   <div className="flex flex-wrap justify-end gap-0.5 overflow-y-auto overscroll-contain">
-                    {myDiscards.map((t, i) => (
-                      <TileView
-                        key={`${t._type}-${String(t.value)}-${i}`}
-                        tile={t}
-                        className="h-8 w-[1.375rem] sm:h-10 sm:w-7 xl:h-12 xl:w-[2.0625rem]"
-                      />
-                    ))}
+                    {myDiscards.map((t, i) => {
+                      const key = `${t._type}-${String(t.value)}-${i}`;
+                      const isClaimed = i === myDiscards.length - 1 && claimedDiscardKeys.has(`${t._type}-${String(t.value)}`);
+                      if (!isClaimed) return <TileView key={key} tile={t} className={discardTileSizeClass} />;
+                      return (
+                        <div key={key} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
+                          <TileView tile={t} className={discardTileSizeClass} />
+                          <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
+                          <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -1594,7 +1723,9 @@ export function GameBoard({
             >
               <DndContext
                 sensors={sensors}
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={() => setActiveDragId(null)}
                 accessibility={{
                   announcements: {
                     onDragStart({ active }) {
@@ -1731,6 +1862,14 @@ export function GameBoard({
                   })}
                   </ul>
                 </SortableContext>
+                <DragOverlay dropAnimation={null}>
+                  {activeTile ? (
+                    <TileView
+                      tile={activeTile}
+                      className={`${handTileSizeClass} shadow-2xl scale-105 rotate-1 opacity-95`}
+                    />
+                  ) : null}
+                </DragOverlay>
               </DndContext>
             </div>
           </section>
@@ -1798,13 +1937,22 @@ export function GameBoard({
               Draw
             </button>
           )}
+          {init.tilesDealt && !isEnded && claimSecondsLeft !== null && (
+            <ClaimCountdownBar secondsLeft={claimSecondsLeft} totalSeconds={claimWindowTotalSeconds} />
+          )}
+
           {init.tilesDealt && !isEnded && showClaimButtons && (
             <>
               {showClaimDivider && <span className="w-full h-px shrink-0 bg-border my-0.5" aria-hidden />}
 
-              {claimSecondsLeft !== null ? (
-                <ClaimCountdownBar secondsLeft={claimSecondsLeft} totalSeconds={claimWindowTotalSeconds} />
-              ) : null}
+              <div className="flex items-center gap-1.5 rounded-lg bg-amber-400/15 border border-amber-400/40 px-2.5 py-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500 animate-pulse" aria-hidden />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  {game.lastDiscardedTile
+                    ? `${tileToLabel(game.lastDiscardedTile)} discarded — claim?`
+                    : 'Claim available'}
+                </span>
+              </div>
 
               {/* Structured non-tutorial: tile-group selectors */}
               {!isTutorial && useStructuredLegal && (
@@ -1819,6 +1967,7 @@ export function GameBoard({
                       label="Pong"
                       discardIndex={pongMeldPreview.length - 1}
                       selected={selectedClaimGroup?.kind === 'pong'}
+                      dimmed={selectedClaimGroup !== null && selectedClaimGroup.kind !== 'pong'}
                       onPress={() => {
                         if (!useGroupSelectMode) {
                           onClaimPong();
@@ -1835,6 +1984,7 @@ export function GameBoard({
                       label={meldDisplayTerm(game.ruleSetId, 'fullSet')}
                       discardIndex={kongMeldPreview.length - 1}
                       selected={selectedClaimGroup?.kind === 'kong'}
+                      dimmed={selectedClaimGroup !== null && selectedClaimGroup.kind !== 'kong'}
                       onPress={() => {
                         if (!useGroupSelectMode) {
                           onClaimKong();
@@ -1850,16 +2000,17 @@ export function GameBoard({
                       const discardIdx = game.lastDiscardedTile
                         ? action.meld.findIndex((t) => tileEquals(t, game.lastDiscardedTile!))
                         : -1;
+                      const isThisSelected =
+                        selectedClaimGroup?.kind === 'chow' &&
+                        selectedClaimGroup.variantId === action.variantId;
                       return (
                         <ClaimTileGroup
                           key={action.variantId}
                           tiles={action.meld}
                           label="Chow"
                           discardIndex={discardIdx}
-                          selected={
-                            selectedClaimGroup?.kind === 'chow' &&
-                            selectedClaimGroup.variantId === action.variantId
-                          }
+                          selected={isThisSelected}
+                          dimmed={selectedClaimGroup !== null && !isThisSelected}
                           onPress={() => {
                             if (!useGroupSelectMode) {
                               onClaimChow(action.variantId);

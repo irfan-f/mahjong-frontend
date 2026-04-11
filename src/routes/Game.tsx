@@ -17,9 +17,10 @@ import {
   concealedKong,
   setShowHand,
   createGame,
+  getLobby,
 } from '../api/endpoints';
 import { DEFAULT_RULESET_ID } from '../terminology/rulesetTerminology';
-import type { Game as GameType, Tile, ScoringResult } from '../types';
+import type { Game as GameType, Lobby as LobbyType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
 import { GameBoard } from '../components/game/GameBoard';
@@ -33,9 +34,11 @@ export function Game() {
   const { getIdToken, user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [game, setGame] = useState<GameType | null>(null);
+  const [lobby, setLobby] = useState<LobbyType | null>(null);
   const [lastScoringResult, setLastScoringResult] = useState<ScoringResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [startingNewGame, setStartingNewGame] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [botStepCapMessage] = useState<string | null>(null);
   const fetchSeqRef = useRef(0);
@@ -128,6 +131,31 @@ export function Game() {
     }, 3000);
     return () => clearInterval(interval);
   }, [gameId, refreshGameState]);
+
+  const isEnded = game?.status === 'ended';
+
+  useEffect(() => {
+    if (!game?.lobby_id || !isEnded) return;
+    const lobbyId = game.lobby_id;
+    const poll = async () => {
+      const token = await getIdToken(true);
+      if (!token) return;
+      try {
+        const data = await getLobby(lobbyId, token);
+        if (data) setLobby(data);
+      } catch {}
+    };
+    void poll();
+    const interval = setInterval(poll, 2000);
+    return () => clearInterval(interval);
+  }, [game?.lobby_id, isEnded, getIdToken]);
+
+  useEffect(() => {
+    if (!isEnded || !lobby?.currentGameId) return;
+    if (lobby.currentGameId !== gameId) {
+      navigate(`/game/${lobby.currentGameId}`, { replace: true });
+    }
+  }, [isEnded, lobby?.currentGameId, gameId, navigate]);
 
   const handleRollAndDeal = async () => {
     if (!gameId) return;
@@ -392,12 +420,15 @@ export function Game() {
     if (!game?.lobby_id) return;
     const token = await getIdToken(true);
     if (!token) return;
+    setStartingNewGame(true);
     setError(null);
     try {
       const { gameId: newGameId } = await createGame(game.lobby_id, token, DEFAULT_RULESET_ID);
       navigate(`/game/${newGameId}`, { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start new game');
+    } finally {
+      setStartingNewGame(false);
     }
   };
 
@@ -430,7 +461,6 @@ export function Game() {
     );
   }
 
-  const isEnded = game.status === 'ended';
   const botTurn = Boolean(game.currentPlayer?.startsWith('ai:'));
   const waitingOnBot = !isEnded && (acting || botTurn);
   const isMyTurn = !isEnded && game.currentPlayer === user?.uid;
@@ -530,6 +560,8 @@ export function Game() {
           onConcealedChow={handleConcealedChow}
           onConcealedKong={handleConcealedKong}
           onStartNewGame={game.status === 'ended' ? handleStartNewGame : undefined}
+          startingNewGame={startingNewGame}
+          lobby={lobby}
           mode="standard"
           onShowHandChange={async (showHand) => {
             if (!gameId) return;
