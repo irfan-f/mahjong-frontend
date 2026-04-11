@@ -187,7 +187,9 @@ function SortableHandTile({
 
   // Strip role/tabIndex from dnd-kit attrs — <li> uses its native semantics and
   // the inner button owns focus.
-  const { role: _role, tabIndex: _tabIndex, ...ariaAttributes } = attributes;
+  const ariaAttributes = { ...attributes };
+  delete (ariaAttributes as { role?: unknown; tabIndex?: unknown }).role;
+  delete (ariaAttributes as { role?: unknown; tabIndex?: unknown }).tabIndex;
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -214,6 +216,35 @@ function SortableHandTile({
         />
       )}
     </li>
+  );
+}
+
+function ClaimCountdownBar({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
+  const total = Math.max(1, totalSeconds);
+  const pct = Math.min(100, Math.round((secondsLeft / total) * 100));
+  const urgent = secondsLeft <= 5;
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted">Claim window</span>
+        <span
+          className={`text-xs font-bold tabular-nums ${urgent ? 'text-rose-500' : 'text-on-surface'}`}
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label={`${secondsLeft} seconds remaining to claim`}
+        >
+          {secondsLeft}s
+        </span>
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded-full bg-border/50" aria-hidden>
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${
+            urgent ? 'bg-rose-500' : secondsLeft <= 10 ? 'bg-amber-400' : 'bg-(--color-primary)'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -638,7 +669,7 @@ export function GameBoard({
 
   // Claim-window countdown — ticks every 500 ms while a deadline is active.
   const [claimSecondsLeft, setClaimSecondsLeft] = useState<number | null>(null);
-  const claimWindowTotalRef = useRef<number>(30);
+  const [claimWindowTotalSeconds, setClaimWindowTotalSeconds] = useState(30);
   useEffect(() => {
     const deadline = game.claimWindowEndsAt ? Date.parse(game.claimWindowEndsAt) : null;
     if (!deadline || !showClaimButtons) {
@@ -646,7 +677,7 @@ export function GameBoard({
       return;
     }
     const initialRemaining = Math.max(1, Math.ceil((deadline - Date.now()) / 1000));
-    claimWindowTotalRef.current = initialRemaining;
+    setClaimWindowTotalSeconds(initialRemaining);
     const tick = () => {
       setClaimSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
     };
@@ -1771,34 +1802,9 @@ export function GameBoard({
             <>
               {showClaimDivider && <span className="w-full h-px shrink-0 bg-border my-0.5" aria-hidden />}
 
-              {claimSecondsLeft !== null && (() => {
-                const total = claimWindowTotalRef.current;
-                const pct = Math.min(100, Math.round((claimSecondsLeft / total) * 100));
-                const urgent = claimSecondsLeft <= 5;
-                return (
-                  <div className="flex w-full flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted">Claim window</span>
-                      <span
-                        className={`text-xs font-bold tabular-nums ${urgent ? 'text-rose-500' : 'text-on-surface'}`}
-                        aria-live="polite"
-                        aria-atomic="true"
-                        aria-label={`${claimSecondsLeft} seconds remaining to claim`}
-                      >
-                        {claimSecondsLeft}s
-                      </span>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-border/50" aria-hidden>
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-500 ${
-                          urgent ? 'bg-rose-500' : claimSecondsLeft <= 10 ? 'bg-amber-400' : 'bg-(--color-primary)'
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
+              {claimSecondsLeft !== null ? (
+                <ClaimCountdownBar secondsLeft={claimSecondsLeft} totalSeconds={claimWindowTotalSeconds} />
+              ) : null}
 
               {/* Structured non-tutorial: tile-group selectors */}
               {!isTutorial && useStructuredLegal && (
