@@ -125,6 +125,8 @@ export interface Game {
     tilesShuffled: boolean;
     tilesDealt: boolean;
   };
+  /** ISO-8601 instant when the current discard-claim response window closes. Null when no window is active. */
+  claimWindowEndsAt?: string | null;
   status?: 'active' | 'ended';
   winnerId?: string;
   /** Backend: `declare-mahjong` (winner set) or `exhaustive-draw` (no winner). */
