@@ -10,6 +10,7 @@ import {
   signInAnonymously,
   signInWithPopup,
   linkWithPopup,
+  updateProfile,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -28,6 +29,8 @@ interface AuthContextValue {
   linkWithGoogle: () => Promise<void>;
   /** Get ID token for backend. Pass true to force refresh (recommended when sending to server). */
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
+  /** Update the display name on the Firebase Auth profile. */
+  updateDisplayName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -87,6 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u.getIdToken(forceRefresh);
   }, []);
 
+  const updateDisplayName = useCallback(async (name: string) => {
+    const u = auth.currentUser;
+    if (!u) throw new Error('Not signed in');
+    await updateProfile(u, { displayName: name });
+    setUser({ ...u });
+  }, []);
+
   const value: AuthContextValue = {
     user,
     idToken,
@@ -96,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     linkWithGoogle,
     getIdToken,
+    updateDisplayName,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

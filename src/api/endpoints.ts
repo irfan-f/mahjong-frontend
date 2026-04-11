@@ -28,10 +28,10 @@ async function throwOnError(res: Response): Promise<void> {
   throw new Error(msg);
 }
 
-export async function userSetup(token: string | null): Promise<void> {
+export async function userSetup(token: string | null, displayName?: string | null): Promise<void> {
   const res = await apiFetch('/api/user/setup', {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify(displayName ? { displayName } : {}),
     token,
   });
   await throwOnError(res);

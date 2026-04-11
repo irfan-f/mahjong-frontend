@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import type { WindTileValue, Tile } from '../../types';
 import { TileView } from '../TileView';
-import { tileToLabel } from '../../lib/tileAssets';
 import { Spinner } from '../Spinner';
 import { Icon } from '../Icon';
 import { icons } from '../../icons';
@@ -25,7 +24,6 @@ export interface OpponentCompactRowProps {
   expanded: boolean;
   onAccordionToggle: (opponentId: string) => void;
   tutorialAnchor?: string;
-  claimedDiscardKeys?: Set<string>;
 }
 
 function OpponentCompactRowInner({
@@ -42,7 +40,6 @@ function OpponentCompactRowInner({
   expanded,
   onAccordionToggle,
   tutorialAnchor,
-  claimedDiscardKeys,
 }: OpponentCompactRowProps) {
   const countParts: string[] = [];
   if (meldBase > 0 || meldKongBonus > 0) {
@@ -112,18 +109,9 @@ function OpponentCompactRowInner({
             className="flex max-w-full flex-nowrap gap-0.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
             aria-label="Recent discards"
           >
-            {previewDiscardTiles.map((t, i) => {
-              const key = `${t._type}-${String(t.value)}-${i}`;
-              const isClaimed = i === previewDiscardTiles.length - 1 && claimedDiscardKeys?.has(`${t._type}-${String(t.value)}`);
-              if (!isClaimed) return <TileView key={key} tile={t} className="h-7 w-5 shrink-0" />;
-              return (
-                <div key={key} className="relative inline-flex shrink-0" title={`Claimed — ${tileToLabel(t)}`}>
-                  <TileView tile={t} className="h-7 w-5" />
-                  <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
-                  <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
-                </div>
-              );
-            })}
+            {previewDiscardTiles.map((t, i) => (
+              <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 shrink-0" />
+            ))}
           </div>
         ) : null}
       </button>

@@ -39,15 +39,13 @@ import {
   playerWindMap,
   tutorialAnchorForOpponentWind,
 } from '../../lib/tableLayout';
-import { MAX_PREVIEW_TILES } from '../../lib/meldPreview';
 import { tileEquals } from '../../lib/chowClaim';
 
 import type { ScoringResult } from '../../types';
 import { WallTable } from './WallTable';
 import { MobileWallSection } from './MobileWallSection';
-import { AnimateExpand } from './AnimateExpand';
 import { OpponentSeatCard } from './OpponentSeatCard';
-import { OpponentCompactRow } from './OpponentCompactRow';
+import { OpponentMobileCard } from './OpponentMobileCard';
 import { Icon } from '../Icon';
 import { icons } from '../../icons';
 
@@ -605,13 +603,7 @@ export function GameBoard({
   const [selectedClaimGroup, setSelectedClaimGroup] = useState<SelectedClaimGroup | null>(null);
   const [winMeldModalOpen, setWinMeldModalOpen] = useState(false);
   const [mobileWallOpen, setMobileWallOpen] = useState(false);
-  const [mobileFocusMode, setMobileFocusMode] = useState<'normal' | 'table'>('normal');
-  const [mobileExpandedOpponentPid, setMobileExpandedOpponentPid] = useState<string | null>(null);
   const [mobileDockSection, setMobileDockSection] = useState<'hand' | 'melds' | 'discards'>('hand');
-
-  const handleOpponentAccordionToggle = useCallback((pid: string) => {
-    setMobileExpandedOpponentPid((cur) => (cur === pid ? null : pid));
-  }, []);
 
   const toggleMobileWall = useCallback(() => {
     setMobileWallOpen((o) => !o);
@@ -873,25 +865,23 @@ export function GameBoard({
   const meldTileSizeClass = MELD_DISCARD_TILE_SIZES[meldDiscardScale]!;
   const discardTileSizeClass = MELD_DISCARD_TILE_SIZES[meldDiscardScale]!;
 
-  const claimedDiscardKeys = useMemo(() => {
-    const keys = new Set<string>();
-    if (!game.playerMelds) return keys;
-    for (const melds of Object.values(game.playerMelds)) {
-      for (const meld of melds) {
-        if (meld.source === 'discard-claim' && meld.tiles && meld.claimedTileIndex != null) {
-          const t = meld.tiles[meld.claimedTileIndex];
-          if (t) keys.add(`${t._type}-${String(t.value)}`);
-        }
-      }
-    }
-    return keys;
-  }, [game.playerMelds]);
-
   const renderMeldTiles = (meld: PlayerMeld, isOwner: boolean) => {
     if (meld.tiles && (isOwner || meld.visibility !== 'concealed')) {
-      return meld.tiles.map((t, ti) => (
-        <TileView key={ti} tile={t} className={meldTileSizeClass} />
-      ));
+      const claimIdx = meld.source === 'discard-claim' ? meld.claimedTileIndex : null;
+      return meld.tiles.map((t, ti) => {
+        const tileEl = <TileView key={ti} tile={t} className={meldTileSizeClass} />;
+        if (ti !== claimIdx) return tileEl;
+        return (
+          <div key={ti} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
+            {tileEl}
+            <span
+              className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)"
+              aria-hidden
+            />
+            <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
+          </div>
+        );
+      });
     }
     const count = meld.tileCount ?? meld.tiles?.length ?? 0;
     return Array.from({ length: count }).map((_, idx) => (
@@ -1060,7 +1050,6 @@ export function GameBoard({
     </>
   );
 
-  const mobileTableFocusDock = mobileFocusMode === 'table';
   const showMobileHandPanel =
     isTutorial ||
     mobileDockSection === 'hand' ||
@@ -1129,7 +1118,6 @@ export function GameBoard({
                     isBot={topPid.startsWith('ai:')}
                     renderMeldTiles={renderMeldTiles}
                     getMeldCountParts={getMeldCountParts}
-                    claimedDiscardKeys={claimedDiscardKeys}
                   />
                 );
               })()}
@@ -1153,7 +1141,6 @@ export function GameBoard({
                         isBot={pid.startsWith('ai:')}
                         renderMeldTiles={renderMeldTiles}
                         getMeldCountParts={getMeldCountParts}
-                        claimedDiscardKeys={claimedDiscardKeys}
                       />
                     );
                   })()}
@@ -1200,7 +1187,6 @@ export function GameBoard({
                         isBot={pid.startsWith('ai:')}
                         renderMeldTiles={renderMeldTiles}
                         getMeldCountParts={getMeldCountParts}
-                        claimedDiscardKeys={claimedDiscardKeys}
                       />
                     );
                   })()}
@@ -1209,151 +1195,44 @@ export function GameBoard({
             </section>
 
             {!isTutorial ? (
-              <section
-                aria-label="Players and discards"
-                className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-surface-panel/90 sm:hidden"
-              >
-                <div className="flex flex-wrap gap-1 border-b border-border/40 bg-(--color-surface-panel-muted)/20 p-2">
-                  {(['normal', 'table'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMobileFocusMode(m)}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                        mobileFocusMode === m
-                          ? 'bg-(--color-primary) text-white'
-                          : 'text-muted hover:bg-surface-panel-muted/50 hover:text-on-surface'
-                      }`}
-                    >
-                      {m === 'normal' ? 'All' : 'Table'}
-                    </button>
-                  ))}
-                </div>
-
+              <section aria-label="Opponents" className="flex flex-col gap-2 sm:hidden">
                 {placeGameOverOnTable && (
-                  <div className="border-b border-border/40 p-3">
-                    <section
-                      aria-label="Game over"
-                      className="panel flex flex-col gap-3 rounded-xl border-2 border-(--color-primary) bg-surface-panel p-4 text-center"
-                    >
-                      {gameOverBody}
-                    </section>
-                  </div>
+                  <section
+                    aria-label="Game over"
+                    className="panel flex flex-col gap-3 rounded-xl border-2 border-(--color-primary) bg-surface-panel p-4 text-center"
+                  >
+                    {gameOverBody}
+                  </section>
                 )}
 
-                <div className="min-h-0 max-h-[min(52svh,26rem)] divide-y divide-border/40 overflow-y-auto overscroll-contain">
-                  {[opponentSlotsResolved.top, opponentSlotsResolved.left, opponentSlotsResolved.right].map((pid) => {
-                    const wind = windByPlayer[pid];
-                    const melds = game.playerMelds?.[pid] ?? [];
-                    const mc = getMeldCountParts(melds);
-                    const discards = game.playerDiscards?.[pid] ?? [];
-                    const hand = game.playerHands?.[pid] ?? [];
-                    const previewDiscards = discards.slice(-MAX_PREVIEW_TILES);
-                    const expanded = mobileExpandedOpponentPid === pid;
-                    return (
-                      <div key={pid}>
-                        <OpponentCompactRow
-                          opponentId={pid}
-                          label={getPlayerLabel(pid, opponentIds.indexOf(pid))}
-                          wind={wind}
-                          isDealer={pid === game.startingPlayer}
-                          isCurrent={pid === game.currentPlayer}
-                          isBot={pid.startsWith('ai:')}
-                          meldBase={mc.base}
-                          meldKongBonus={mc.kongBonus}
-                          previewDiscardTiles={previewDiscards}
-                          handCount={hand.length}
-                          expanded={expanded}
-                          onAccordionToggle={handleOpponentAccordionToggle}
-                          tutorialAnchor={wind ? tutorialAnchorForOpponentWind(wind) : undefined}
-                          claimedDiscardKeys={claimedDiscardKeys}
-                        />
-                        <AnimateExpand open={expanded}>
-                          <div className="space-y-3 border-t border-border/30 bg-(--color-surface-panel-muted)/25 px-3 py-3 transition-colors duration-200 motion-reduce:duration-150">
-                            {melds.length > 0 ? (
-                              <div className="flex flex-col gap-2">
-                                <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted">
-                                  Melds
-                                </span>
-                                <div className="flex flex-wrap gap-2">
-                                  {melds.map((meld) => (
-                                    <div
-                                      key={meld.meldId}
-                                      className="flex flex-wrap gap-0.5"
-                                      title={meld.type}
-                                    >
-                                      {renderMeldTiles(meld, false)}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-                            {discards.length > 0 ? (
-                              <div className="flex flex-col gap-2">
-                                <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted">
-                                  Discards
-                                </span>
-                                <div className="flex flex-wrap gap-0.5">
-                                  {discards.map((t, i) => {
-                                    const key = `${t._type}-${String(t.value)}-${i}`;
-                                    const isClaimed = i === discards.length - 1 && claimedDiscardKeys.has(`${t._type}-${String(t.value)}`);
-                                    if (!isClaimed) return <TileView key={key} tile={t} className="h-8 w-6" />;
-                                    return (
-                                      <div key={key} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
-                                        <TileView tile={t} className="h-8 w-6" />
-                                        <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
-                                        <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ) : null}
-                            <div className="flex flex-col gap-2">
-                              <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted">
-                                Hand
-                              </span>
-                              {isEnded && hand.length > 0 ? (
-                                <div className="flex flex-wrap gap-0.5">
-                                  {hand.map((t: Tile, i: number) => (
-                                    <TileView key={i} tile={t} className="h-8 w-6" />
-                                  ))}
-                                </div>
-                              ) : hand.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  {Array.from({ length: hand.length }).map((_, i) => (
-                                    <TileBackView
-                                      key={i}
-                                      className="h-8 w-6 shrink-0"
-                                      aria-hidden
-                                    />
-                                  ))}
-                                  <span className="text-xs tabular-nums text-muted">{hand.length}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted">—</span>
-                              )}
-                            </div>
-                          </div>
-                        </AnimateExpand>
-                      </div>
-                    );
-                  })}
-                </div>
+                {[opponentSlotsResolved.top, opponentSlotsResolved.left, opponentSlotsResolved.right].map((pid) => (
+                  <OpponentMobileCard
+                    key={pid}
+                    pid={pid}
+                    game={game}
+                    label={getPlayerLabel(pid, opponentIds.indexOf(pid))}
+                    wind={windByPlayer[pid]}
+                    isDealer={pid === game.startingPlayer}
+                    isCurrent={pid === game.currentPlayer}
+                    isEnded={isEnded}
+                    isBot={pid.startsWith('ai:')}
+                    getMeldCountParts={getMeldCountParts}
+                  />
+                ))}
 
-                {init.tilesDealt && !isEnded && playerIdsFull.length === 4 ? (
+                {init.tilesDealt && !isEnded && playerIdsFull.length === 4 && (
                   <MobileWallSection
                     {...wallTableInput}
                     expanded={mobileWallOpen}
                     onToggle={toggleMobileWall}
                   />
-                ) : null}
+                )}
 
-                {!init.tilesDealt && !isEnded ? (
-                  <p className="px-3 py-2 text-center text-xs text-muted">
-                    Opponents sit by wind (you are East when dealing). Roll & deal to build the walls.
+                {!init.tilesDealt && !isEnded && (
+                  <p className="rounded-xl border border-border/30 px-3 py-3 text-center text-xs text-muted">
+                    Opponents sit by wind (you are East when dealing). Roll &amp; deal to build the walls.
                   </p>
-                ) : null}
+                )}
               </section>
             ) : null}
           </>
@@ -1374,7 +1253,6 @@ export function GameBoard({
                 isBot={pid.startsWith('ai:')}
                 renderMeldTiles={renderMeldTiles}
                 getMeldCountParts={getMeldCountParts}
-                claimedDiscardKeys={claimedDiscardKeys}
               />
             ))}
           </section>
@@ -1491,7 +1369,7 @@ export function GameBoard({
                 aria-label="Your melds"
                 className={`flex min-w-0 flex-1 flex-col items-start gap-1 max-sm:order-3 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pr-0.5 sm:min-w-[8rem] lg:min-w-[11rem] xl:min-w-[13rem] xl:max-w-[22rem] ${
                   !isTutorial && mobileDockSection !== 'melds' ? 'max-sm:hidden' : ''
-                } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
+                } sm:flex`}
               >
                 {(() => {
                   const myMeldCounts = getMeldCountParts(myMelds);
@@ -1687,29 +1565,20 @@ export function GameBoard({
                 aria-label="Your discards"
                 className={`flex min-w-0 flex-1 flex-col items-end gap-1 max-sm:order-4 max-sm:w-full max-sm:min-h-0 max-sm:max-h-[min(42svh,20rem)] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-0.5 sm:min-w-[8rem] lg:min-w-[11rem] xl:min-w-[13rem] xl:max-w-[22rem] ${
                   !isTutorial && mobileDockSection !== 'discards' ? 'max-sm:hidden' : ''
-                } ${!isTutorial && mobileTableFocusDock ? 'max-sm:hidden' : ''} sm:flex`}
+                } sm:flex`}
               >
                 <div className="flex w-full items-center gap-2">
                   <span className="text-xs md:text-sm lg:text-base font-medium text-muted">
                     Discards{myDiscards.length > 0 ? ` (${myDiscards.length})` : ''}
                   </span>
                 </div>
-                {myDiscards.length > 0 ? (
+                {myDiscards.length > 0 && (
                   <div className="flex flex-wrap justify-end gap-0.5 overflow-y-auto overscroll-contain">
-                    {myDiscards.map((t, i) => {
-                      const key = `${t._type}-${String(t.value)}-${i}`;
-                      const isClaimed = i === myDiscards.length - 1 && claimedDiscardKeys.has(`${t._type}-${String(t.value)}`);
-                      if (!isClaimed) return <TileView key={key} tile={t} className={discardTileSizeClass} />;
-                      return (
-                        <div key={key} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
-                          <TileView tile={t} className={discardTileSizeClass} />
-                          <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
-                          <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
-                        </div>
-                      );
-                    })}
+                    {myDiscards.map((t, i) => (
+                      <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className={discardTileSizeClass} />
+                    ))}
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
             <div

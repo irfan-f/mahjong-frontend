@@ -35,7 +35,7 @@ export function Home() {
     setCreating(true);
     setError(null);
     try {
-      await userSetup(token);
+      await userSetup(token, user?.displayName);
       const { lobbyId } = await createLobby(token);
       navigate(`/lobby/${lobbyId}`);
     } catch (e) {
@@ -52,7 +52,7 @@ export function Home() {
     setJoining(true);
     setError(null);
     try {
-      await userSetup(token);
+      await userSetup(token, user?.displayName);
       await joinLobby(joinId.trim(), token);
       navigate(`/lobby/${joinId.trim()}`);
     } catch (e) {

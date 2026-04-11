@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Game as GameType, PlayerMeld, Tile, WindTileValue } from '../../types';
 import { TileView } from '../TileView';
-import { tileToLabel } from '../../lib/tileAssets';
 import { Spinner } from '../Spinner';
 
 export type OpponentSeatPosition = 'grid' | 'top' | 'top-flow' | 'left' | 'right';
@@ -23,7 +22,6 @@ export interface OpponentSeatCardProps {
   isBot?: boolean;
   renderMeldTiles: (meld: PlayerMeld, isOwner: boolean) => ReactNode;
   getMeldCountParts: (melds: PlayerMeld[]) => { base: number; kongBonus: number };
-  claimedDiscardKeys?: Set<string>;
 }
 
 export function OpponentSeatCard({
@@ -39,7 +37,6 @@ export function OpponentSeatCard({
   isBot = false,
   renderMeldTiles,
   getMeldCountParts,
-  claimedDiscardKeys,
 }: OpponentSeatCardProps) {
   const hand = game.playerHands?.[pid] ?? [];
   const discards = game.playerDiscards?.[pid] ?? [];
@@ -184,18 +181,9 @@ export function OpponentSeatCard({
           </div>
           {discards.length > 0 && (
             <div className={`flex flex-wrap gap-0.5 ${discardsRowJustify}`}>
-              {discards.map((t, i) => {
-                const key = `${t._type}-${String(t.value)}-${i}`;
-                const isClaimed = i === discards.length - 1 && claimedDiscardKeys?.has(`${t._type}-${String(t.value)}`);
-                if (!isClaimed) return <TileView key={key} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />;
-                return (
-                  <div key={key} className="relative inline-flex" title={`Claimed — ${tileToLabel(t)}`}>
-                    <TileView tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
-                    <span className="pointer-events-none absolute right-0.5 top-0.5 z-20 h-2 w-2 rounded-full bg-rose-500 shadow-sm ring-1 ring-white dark:ring-(--color-surface-panel)" aria-hidden />
-                    <span className="sr-only">Claimed from discard: {tileToLabel(t)}</span>
-                  </div>
-                );
-              })}
+              {discards.map((t, i) => (
+                <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
+              ))}
             </div>
           )}
         </div>
