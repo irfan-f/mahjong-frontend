@@ -1,5 +1,18 @@
 import type { Tile } from '../types';
 import { tileBackAssetPath, tileToAssetPath, tileToLabel } from '../lib/tileAssets';
+import { useTileLabel } from '../contexts/TileLabelContext';
+
+const WIND_SHORT: Record<string, string> = { east: 'E', south: 'S', west: 'W', north: 'N' };
+const DRAGON_SHORT: Record<string, string> = { red: '中', green: '發', white: '白' };
+
+function tileCompactLabel(tile: Tile): string {
+  if (tile._type === 'character') return `${String(tile.value)}m`;
+  if (tile._type === 'dot') return `${String(tile.value)}p`;
+  if (tile._type === 'stick') return `${String(tile.value)}s`;
+  if (tile._type === 'wind') return WIND_SHORT[tile.value] ?? String(tile.value);
+  if (tile._type === 'dragon') return DRAGON_SHORT[tile.value] ?? String(tile.value);
+  return '';
+}
 
 export interface TileBackViewProps {
   className?: string;
@@ -36,7 +49,7 @@ export function TileBackView({
         }}
       />
       <span
-        className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-muted p-1"
+        className="absolute inset-0 flex items-center justify-center text-[0.625rem] font-medium text-muted p-1"
         style={{ display: 'none' }}
         aria-hidden
       >
@@ -80,10 +93,12 @@ export function TileView({
   'aria-label': ariaLabel,
   title: titleProp,
 }: TileViewProps) {
+  const showLabel = useTileLabel();
   const label = tileToLabel(tile);
   const src = tileToAssetPath(tile);
   const effectiveTitle = titleProp ?? label;
   const effectiveAriaLabel = ariaLabel ?? label;
+  const compactLabel = showLabel ? tileCompactLabel(tile) : '';
 
   const content = (
     <span className="relative h-full w-full flex items-center justify-center p-0.5">
@@ -102,10 +117,18 @@ export function TileView({
       <span
         className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700 p-1"
         style={{ display: 'none' }}
-        aria-hidden
       >
         {label}
       </span>
+      {compactLabel && (
+        <span
+          className="pointer-events-none absolute bottom-0 inset-x-0 rounded-b-md bg-black/50 text-center font-bold leading-tight text-white"
+          style={{ fontSize: '0.55rem' }}
+          aria-hidden
+        >
+          {compactLabel}
+        </span>
+      )}
     </span>
   );
 
@@ -138,6 +161,7 @@ export function TileView({
 
   return (
     <span
+      role="img"
       className={`inline-flex items-center justify-center overflow-hidden ${tileFace} ${className}`}
       title={effectiveTitle}
       aria-label={effectiveAriaLabel}

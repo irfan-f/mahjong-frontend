@@ -16,7 +16,9 @@ import {
   concealedChow,
   concealedKong,
   setShowHand,
+  createGame,
 } from '../api/endpoints';
+import { DEFAULT_RULESET_ID } from '../terminology/rulesetTerminology';
 import type { Game as GameType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
@@ -386,6 +388,19 @@ export function Game() {
     }
   };
 
+  const handleStartNewGame = async () => {
+    if (!game?.lobby_id) return;
+    const token = await getIdToken(true);
+    if (!token) return;
+    setError(null);
+    try {
+      const { gameId: newGameId } = await createGame(game.lobby_id, token, DEFAULT_RULESET_ID);
+      navigate(`/game/${newGameId}`, { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start new game');
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-4 text-muted" role="status" aria-live="polite" aria-busy="true">
@@ -514,6 +529,7 @@ export function Game() {
           onConcealedPong={handleConcealedPong}
           onConcealedChow={handleConcealedChow}
           onConcealedKong={handleConcealedKong}
+          onStartNewGame={game.status === 'ended' ? handleStartNewGame : undefined}
           mode="standard"
           onShowHandChange={async (showHand) => {
             if (!gameId) return;

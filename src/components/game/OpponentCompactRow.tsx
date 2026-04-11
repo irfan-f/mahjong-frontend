@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { WindTileValue, Tile } from '../../types';
 import { TileView } from '../TileView';
+import { Spinner } from '../Spinner';
 import { Icon } from '../Icon';
 import { icons } from '../../icons';
 
@@ -15,13 +16,12 @@ export interface OpponentCompactRowProps {
   wind?: WindTileValue;
   isDealer: boolean;
   isCurrent: boolean;
+  isBot?: boolean;
   meldBase: number;
   meldKongBonus: number;
-  /** Recent discards shown face-up in the collapsed row. */
   previewDiscardTiles: Tile[];
   handCount: number;
   expanded: boolean;
-  /** Stable callback from parent (e.g. useCallback) — pass opponentId. */
   onAccordionToggle: (opponentId: string) => void;
   tutorialAnchor?: string;
 }
@@ -32,6 +32,7 @@ function OpponentCompactRowInner({
   wind,
   isDealer,
   isCurrent,
+  isBot = false,
   meldBase,
   meldKongBonus,
   previewDiscardTiles,
@@ -69,7 +70,25 @@ function OpponentCompactRowInner({
         aria-label={`${label}${meta ? `, ${meta}` : ''}${discardSummary ? `, ${discardSummary}` : ''}`}
       >
         <div className="flex w-full min-w-0 items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-sm font-medium text-on-surface">{label}</span>
+          <span className="min-w-0 flex items-center gap-1.5 truncate">
+            <span aria-live="polite" aria-atomic="true" className="contents">
+              {isCurrent && (
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                    isBot
+                      ? 'bg-(--color-primary)/15 text-(--color-primary)'
+                      : 'bg-amber-400/20 text-amber-600 dark:text-amber-400'
+                  }`}
+                >
+                  {isBot ? <Spinner className="w-2.5 h-2.5 shrink-0" aria-hidden /> : (
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" aria-hidden />
+                  )}
+                  {isBot ? 'Thinking' : 'Turn'}
+                </span>
+              )}
+            </span>
+            <span className="truncate text-sm font-medium text-on-surface">{label}</span>
+          </span>
           <span className="flex shrink-0 items-center gap-1">
             {meta ? (
               <span className="text-xs tabular-nums text-muted">{meta}</span>
@@ -115,6 +134,7 @@ export const OpponentCompactRow = memo(OpponentCompactRowInner, (prev, next) => 
     prev.wind === next.wind &&
     prev.isDealer === next.isDealer &&
     prev.isCurrent === next.isCurrent &&
+    prev.isBot === next.isBot &&
     prev.meldBase === next.meldBase &&
     prev.meldKongBonus === next.meldKongBonus &&
     prev.handCount === next.handCount &&

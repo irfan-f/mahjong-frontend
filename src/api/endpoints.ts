@@ -10,7 +10,6 @@ import type {
 import { DEFAULT_RULESET_ID, type RulesetId } from '../terminology/rulesetTerminology';
 import { apiFetch } from './client';
 
-/** Optional fields on game mutation responses (server-driven bot steps). */
 export type GameMutationMeta = {
   aiStepsApplied?: number;
   aiStepCapReached?: boolean;
@@ -313,11 +312,6 @@ export async function concealedKong(
   return res.json();
 }
 
-/**
- * Advance exactly one bot turn on the server.
- * Returns `{ stepped: true }` when a bot action was applied (caller should re-fetch game state),
- * or `{ stepped: false }` when it is already a human's turn or the game is over.
- */
 export async function stepBot(gameId: string, token: string | null): Promise<{ stepped: boolean }> {
   const res = await apiFetch(`/api/game/${gameId}/stepBot`, {
     method: 'POST',

@@ -1,14 +1,9 @@
-import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Game as GameType, PlayerMeld, Tile, WindTileValue } from '../../types';
 import { TileView } from '../TileView';
-import { MAX_PREVIEW_TILES, partitionMeldsForPreview } from '../../lib/meldPreview';
-import { AllTilesButton, TilePopover } from './ExpandableTileOverlay';
+import { Spinner } from '../Spinner';
 
-/** `top-flow`: in normal flow above the table (avoids overlapping the wall). */
 export type OpponentSeatPosition = 'grid' | 'top' | 'top-flow' | 'left' | 'right';
-
-const MAX_PREVIEW_DISCARDS = MAX_PREVIEW_TILES;
 
 function formatWind(w: WindTileValue): string {
   return w.charAt(0).toUpperCase() + w.slice(1);
@@ -21,10 +16,10 @@ export interface OpponentSeatCardProps {
   wind?: WindTileValue;
   isDealer: boolean;
   position: OpponentSeatPosition;
-  /** `data-tutorial-anchor` value */
   tutorialAnchor: string;
   isCurrent: boolean;
   isEnded: boolean;
+  isBot?: boolean;
   renderMeldTiles: (meld: PlayerMeld, isOwner: boolean) => ReactNode;
   getMeldCountParts: (melds: PlayerMeld[]) => { base: number; kongBonus: number };
 }
@@ -39,6 +34,7 @@ export function OpponentSeatCard({
   tutorialAnchor,
   isCurrent,
   isEnded,
+  isBot = false,
   renderMeldTiles,
   getMeldCountParts,
 }: OpponentSeatCardProps) {
@@ -46,18 +42,9 @@ export function OpponentSeatCard({
   const discards = game.playerDiscards?.[pid] ?? [];
   const melds = game.playerMelds?.[pid] ?? [];
   const meldCounts = getMeldCountParts(melds);
-
-  const [meldOverlayOpen, setMeldOverlayOpen] = useState(false);
-  const [discardOverlayOpen, setDiscardOverlayOpen] = useState(false);
-  const meldBtnRef = useRef<HTMLButtonElement>(null);
-  const discardBtnRef = useRef<HTMLButtonElement>(null);
+  const showTurnIndicator = isCurrent && !isEnded;
 
   const isSideSeat = position === 'left' || position === 'right';
-
-  const { preview: previewMelds, rest: restMelds } = partitionMeldsForPreview(melds, MAX_PREVIEW_TILES);
-  const hasMoreMelds = restMelds.length > 0;
-  const previewDiscards = discards.slice(-MAX_PREVIEW_DISCARDS);
-  const hasMoreDiscards = discards.length > MAX_PREVIEW_DISCARDS;
 
   const meldsRowJustify = isSideSeat
     ? position === 'right'
@@ -104,67 +91,52 @@ export function OpponentSeatCard({
             isSideSeat ? 'w-full' : 'flex-1 items-start'
           } ${isSideSeat && position === 'right' ? 'items-end' : ''}`}
         >
-          <div className={`flex w-full items-center justify-between gap-2 ${isSideSeat ? '' : 'max-sm:max-w-48'}`}>
-            <span className="text-xs lg:text-sm font-medium text-muted">
+          <div className={`flex w-full items-center gap-2 ${isSideSeat ? '' : 'max-sm:max-w-48'}`}>
+            <span className="text-xs md:text-sm lg:text-base font-medium text-muted">
               Melds
               {meldCounts.base > 0 || meldCounts.kongBonus > 0
                 ? ` (${meldCounts.base}${meldCounts.kongBonus > 0 ? ` +${meldCounts.kongBonus}` : ''})`
                 : ''}
             </span>
-            {hasMoreMelds && (
-              <AllTilesButton
-                btnRef={meldBtnRef}
-                open={meldOverlayOpen}
-                onClick={() => setMeldOverlayOpen((v) => !v)}
-                ariaLabel={meldOverlayOpen ? `Hide all melds for ${label}` : `Show all melds for ${label}`}
-                title={meldOverlayOpen ? 'Hide all melds' : 'Show all melds'}
-              />
-            )}
           </div>
-          {melds.length === 0 ? null : (
-            <>
-              <div className={`flex flex-wrap gap-1 ${meldsRowJustify}`}>
-                {previewMelds.map((meld) => (
-                  <div key={meld.meldId} className="flex flex-col items-center gap-0.5" title={meld.type}>
-                    <div className="flex flex-wrap gap-0.5">{renderMeldTiles(meld, false)}</div>
-                    {meld.visibility === 'concealed' && (
-                      <span className="text-[10px] font-medium text-muted">Concealed</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <TilePopover open={meldOverlayOpen} onClose={() => setMeldOverlayOpen(false)} anchorRef={meldBtnRef} align="start">
-                <div className="flex flex-col gap-3">
-                  {melds.map((meld) => (
-                    <div
-                      key={meld.meldId}
-                      className="flex flex-col items-center gap-1 border-b border-border/40 pb-3 last:border-0 last:pb-0"
-                      title={meld.type}
-                    >
-                      <div className="flex flex-wrap justify-center gap-0.5">
-                        {renderMeldTiles(meld, false)}
-                      </div>
-                      {meld.visibility === 'concealed' && (
-                        <span className="text-[10px] font-medium text-muted">Concealed</span>
-                      )}
-                    </div>
-                  ))}
+          {melds.length > 0 && (
+            <div className={`flex flex-wrap gap-2 ${meldsRowJustify}`}>
+              {melds.map((meld) => (
+                <div key={meld.meldId} className="flex flex-wrap gap-0.5" title={meld.type}>
+                  {renderMeldTiles(meld, false)}
                 </div>
-              </TilePopover>
-            </>
+              ))}
+            </div>
           )}
         </div>
+
         <div
           className={`flex shrink-0 flex-col gap-0.5 ${
             isSideSeat
               ? position === 'right'
                 ? 'w-full items-end border-t border-border/50 pt-2 text-right'
                 : 'w-full items-start border-t border-border/50 pt-2 text-left'
-              : 'max-w-22 items-center text-center'
+              : 'max-w-24 items-center text-center'
           }`}
         >
+          <span aria-live="polite" aria-atomic="true" className="contents">
+            {showTurnIndicator && (
+              <span
+                className={`inline-flex items-center gap-1 self-center rounded-full px-2 py-0.5 text-xs md:text-sm font-semibold ${
+                  isBot
+                    ? 'bg-(--color-primary)/15 text-(--color-primary)'
+                    : 'bg-amber-400/20 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                {isBot ? <Spinner className="w-2.5 h-2.5 shrink-0" aria-hidden /> : (
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" aria-hidden />
+                )}
+                {isBot ? 'Thinking…' : 'Their turn'}
+              </span>
+            )}
+          </span>
           <span
-            className={`w-full truncate text-sm lg:text-base font-semibold text-on-surface ${
+            className={`w-full truncate text-sm md:text-base lg:text-lg font-semibold text-on-surface ${
               isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
             }`}
           >
@@ -172,7 +144,7 @@ export function OpponentSeatCard({
           </span>
           {wind ? (
             <span
-              className={`text-[10px] sm:text-xs lg:text-xs leading-tight text-muted ${
+              className={`text-xs sm:text-sm md:text-sm leading-tight text-muted ${
                 isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
               }`}
             >
@@ -181,7 +153,7 @@ export function OpponentSeatCard({
             </span>
           ) : isDealer ? (
             <span
-              className={`text-[10px] sm:text-xs lg:text-xs leading-tight text-muted ${
+              className={`text-xs sm:text-sm md:text-sm leading-tight text-muted ${
                 isSideSeat ? (position === 'right' ? 'text-right' : 'text-left') : 'text-center'
               }`}
             >
@@ -189,9 +161,10 @@ export function OpponentSeatCard({
             </span>
           ) : null}
           {hand.length > 0 ? (
-            <span className="text-xs lg:text-sm text-muted">Hand ({hand.length})</span>
+            <span className="text-xs md:text-sm lg:text-base text-muted">Hand ({hand.length})</span>
           ) : null}
         </div>
+
         <div
           className={`relative flex min-w-0 flex-col gap-1 ${
             isSideSeat
@@ -201,41 +174,23 @@ export function OpponentSeatCard({
               : 'flex-1 items-end'
           }`}
         >
-          <div className="flex w-full items-center justify-between gap-2">
-            <span className="text-xs lg:text-sm font-medium text-muted">
+          <div className="flex w-full items-center gap-2">
+            <span className="text-xs md:text-sm lg:text-base font-medium text-muted">
               Discards{discards.length > 0 ? ` (${discards.length})` : ''}
             </span>
-            {hasMoreDiscards && (
-              <AllTilesButton
-                btnRef={discardBtnRef}
-                open={discardOverlayOpen}
-                onClick={() => setDiscardOverlayOpen((v) => !v)}
-                ariaLabel={discardOverlayOpen ? `Hide all discards for ${label}` : `Show all discards for ${label}`}
-                title={discardOverlayOpen ? 'Hide all discards' : 'Show all discards'}
-              />
-            )}
           </div>
-          {discards.length === 0 ? null : (
-            <>
-              <div className={`flex flex-wrap gap-0.5 ${discardsRowJustify}`}>
-                {previewDiscards.map((t, i) => (
-                  <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
-                ))}
-              </div>
-              <TilePopover open={discardOverlayOpen} onClose={() => setDiscardOverlayOpen(false)} anchorRef={discardBtnRef} align="end">
-                <div className="flex flex-wrap gap-1">
-                  {discards.map((t, i) => (
-                    <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
-                  ))}
-                </div>
-              </TilePopover>
-            </>
+          {discards.length > 0 && (
+            <div className={`flex flex-wrap gap-0.5 ${discardsRowJustify}`}>
+              {discards.map((t, i) => (
+                <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />
+              ))}
+            </div>
           )}
         </div>
       </div>
       {isEnded && hand.length > 0 && (
         <div className="flex w-full flex-col gap-1 border-t border-border pt-1" aria-label={`${label} hand`}>
-          <span className="text-xs lg:text-sm font-medium text-muted">Hand</span>
+          <span className="text-xs md:text-sm lg:text-base font-medium text-muted">Hand</span>
           <div className="flex flex-wrap justify-center gap-0.5">
             {hand.map((t: Tile, i: number) => (
               <TileView key={i} tile={t} className="h-7 w-5 lg:h-8 lg:w-[1.375rem] xl:h-10 xl:w-[1.6875rem]" />

@@ -129,7 +129,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
       />
     );
 
-    expect(screen.getAllByText('Concealed x3').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('img', { hidden: true }).length).toBeGreaterThanOrEqual(3);
   });
 
   it('shows concealed buttons only from concealed action flags', () => {
@@ -163,7 +163,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
 
     expect(screen.getByRole('button', { name: 'Concealed Pong' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Concealed Chow' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Concealed Gang' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /concealed gang/i })).toBeInTheDocument();
   });
 
   it('supports constrained concealed pong tile selection', async () => {
@@ -210,9 +210,11 @@ describe('GameBoard playerMelds and concealed actions', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' }).length).toBeGreaterThan(0);
     });
-    await user.click(screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' })[0]);
-    await user.click(screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' })[0]);
-    await user.click(screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' })[0]);
+    const dot5Buttons = screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' });
+    await user.click(dot5Buttons[0]!);
+    await user.click(dot5Buttons[1]!);
+    await user.click(dot5Buttons[2]!);
+    await user.click(screen.getByRole('button', { name: 'Confirm concealed pong' }));
 
     await waitFor(() => {
       expect(onConcealedPong).toHaveBeenCalledTimes(1);
@@ -220,7 +222,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
     });
   });
 
-  it('chow claim: single Chow button, pick two hand tiles, confirm passes variantId', async () => {
+  it('chow claim: tile groups shown for each variant, selecting one and confirming passes variantId', async () => {
     const user = userEvent.setup();
     const onClaimChow = vi.fn();
     const c3: Tile = { _type: 'character', value: 3, count: 4 };
@@ -274,12 +276,13 @@ describe('GameBoard playerMelds and concealed actions', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Chow — select two hand tiles' }));
+    // Two chow variants shown as tile groups — select the [c4,c5,c6] group
+    await user.click(
+      screen.getByRole('button', { name: 'Chow: Character 4, Character 5, Character 6' }),
+    );
 
-    await user.click(screen.getByRole('button', { name: 'Select Character 4 for chow' }));
-    await user.click(screen.getByRole('button', { name: 'Select Character 6 for chow' }));
-
-    await user.click(screen.getByRole('button', { name: 'Confirm chow with selected tiles' }));
+    // Confirm button appears and fires the correct variantId
+    await user.click(screen.getByRole('button', { name: 'Confirm Chow' }));
     expect(onClaimChow).toHaveBeenCalledWith('chow:character:4-5-6');
   });
 
