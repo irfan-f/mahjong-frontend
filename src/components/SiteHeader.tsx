@@ -15,11 +15,9 @@ export type SiteHeaderProps = {
   setTheme: (t: Theme) => void;
   /** When provided, desktop shows account menu and the mobile drawer includes the account card. */
   onSignOut?: () => void | Promise<void>;
-  /** Marks the home brand link for the Learn tutorial infobox anchor. */
-  homeLinkTutorialAnchor?: boolean;
 };
 
-export function SiteHeader({ theme, setTheme, onSignOut, homeLinkTutorialAnchor }: SiteHeaderProps) {
+export function SiteHeader({ theme, setTheme, onSignOut }: SiteHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const signedIn = Boolean(onSignOut);
@@ -33,7 +31,6 @@ export function SiteHeader({ theme, setTheme, onSignOut, homeLinkTutorialAnchor 
             to="/"
             className="brand-title col-start-1 row-start-1 min-w-0 max-w-full justify-self-start truncate text-base transition-opacity hover:opacity-90"
             aria-label="Mahjong with Friends — Home"
-            {...(homeLinkTutorialAnchor ? { 'data-tutorial-anchor': 'site-home' } : {})}
           >
             Mahjong with Friends
           </Link>

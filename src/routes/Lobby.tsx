@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat, userSetup } from '../api/endpoints';
+import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat, renameBotInLobbySeat, userSetup } from '../api/endpoints';
 import type { Lobby as LobbyType } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
@@ -22,6 +22,9 @@ export function Lobby() {
   const [error, setError] = useState<string | null>(null);
   const [addingBotSeat, setAddingBotSeat] = useState<number | null>(null);
   const [removingBotSeat, setRemovingBotSeat] = useState<number | null>(null);
+  const [editingBotSeat, setEditingBotSeat] = useState<number | null>(null);
+  const [editingBotName, setEditingBotName] = useState<string>('');
+  const [renamingBotSeat, setRenamingBotSeat] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,7 +127,8 @@ export function Lobby() {
     setAddingBotSeat(seatIndex);
     setError(null);
     try {
-      await addBotToLobbySeat(id, seatIndex, token, { displayName: `Bot ${seatIndex + 1}` });
+      const defaults = ['Bot 1', 'Carol', 'Bob', 'Botty'] as const;
+      await addBotToLobbySeat(id, seatIndex, token, { displayName: defaults[seatIndex] ?? `Bot ${seatIndex + 1}` });
       const next = await getLobby(id, token);
       setLobby(next);
     } catch (e) {
@@ -151,6 +155,43 @@ export function Lobby() {
     }
   };
 
+  const beginInlineRenameBot = (seatIndex: number, currentName: string) => {
+    setEditingBotSeat(seatIndex);
+    setEditingBotName(currentName);
+  };
+
+  const cancelInlineRenameBot = () => {
+    setEditingBotSeat(null);
+    setEditingBotName('');
+  };
+
+  const commitInlineRenameBot = async (seatIndex: number) => {
+    if (!id) return;
+    if (renamingBotSeat !== null) return;
+    const token = await getIdToken(true);
+    if (!token) return;
+    const pid = seats?.[seatIndex] ?? null;
+    if (!pid || !pid.startsWith('ai:')) return;
+    const current = lobby?.aiProfiles?.[pid]?.displayName ?? `Bot ${seatIndex + 1}`;
+    const nextName = editingBotName.trim();
+    if (!nextName || nextName === current) {
+      cancelInlineRenameBot();
+      return;
+    }
+    setError(null);
+    setRenamingBotSeat(seatIndex);
+    try {
+      await renameBotInLobbySeat(id, seatIndex, nextName, token);
+      const next = await getLobby(id, token);
+      setLobby(next);
+      cancelInlineRenameBot();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to rename bot');
+    } finally {
+      setRenamingBotSeat(null);
+    }
+  };
+
   const handleDeleteLobby = async () => {
     if (!id || !window.confirm('Delete this lobby? All players will be removed.')) return;
     const token = await getIdToken(true);
@@ -169,19 +210,36 @@ export function Lobby() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 text-muted" role="status" aria-live="polite" aria-busy="true">
-        <Spinner className="w-8 h-8" />
-        <p>Loading lobby…</p>
+      <div className="h-screen flex flex-col bg-(--color-surface)">
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Lobby" />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 p-6 text-muted"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Spinner className="w-8 h-8" />
+          <p>Loading lobby…</p>
+        </main>
       </div>
     );
   }
   if (error || !lobby) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 p-4 sm:gap-6 sm:p-6">
-        <p className="text-center text-danger text-sm sm:text-base">{error ?? 'Lobby not found'}</p>
-        <Link to="/" className="btn-primary">
-          Back to home
-        </Link>
+      <div className="h-screen flex flex-col bg-(--color-surface)">
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Lobby" />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 p-4 sm:gap-6 sm:p-6"
+        >
+          <p className="text-center text-danger text-sm sm:text-base">{error ?? 'Lobby not found'}</p>
+          <Link to="/" className="btn-primary">
+            Back to home
+          </Link>
+        </main>
       </div>
     );
   }
@@ -276,6 +334,8 @@ export function Lobby() {
               const isMe = pid === user?.uid;
               const label = seatLabel(lobby, pid, idx);
               const isBot = Boolean(pid && pid.startsWith('ai:'));
+              const botName = pid && pid.startsWith('ai:') ? (lobby.aiProfiles?.[pid]?.displayName ?? `Bot ${idx + 1}`) : null;
+              const editingThisBot = Boolean(isBot && editingBotSeat === idx);
               return (
                 <div
                   key={idx}
@@ -285,25 +345,54 @@ export function Lobby() {
                 >
                   {pid ? (
                     <>
-                      <span className="font-semibold text-on-surface truncate w-full text-center text-sm">
-                        {label}
-                      </span>
+                      {editingThisBot ? (
+                        <input
+                          value={editingBotName}
+                          onChange={(e) => setEditingBotName(e.target.value)}
+                          onBlur={() => void commitInlineRenameBot(idx)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void commitInlineRenameBot(idx);
+                            if (e.key === 'Escape') cancelInlineRenameBot();
+                          }}
+                          disabled={renamingBotSeat !== null || addingBotSeat !== null || removingBotSeat !== null}
+                          autoFocus
+                          className="w-full rounded-lg border border-border bg-surface-panel px-2 py-1 text-center text-sm font-semibold text-on-surface outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary) disabled:opacity-50"
+                          aria-label={`Bot name for seat ${idx + 1}`}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (canManageBots && isBot && botName) beginInlineRenameBot(idx, botName);
+                          }}
+                          disabled={!canManageBots || !isBot || renamingBotSeat !== null || addingBotSeat !== null || removingBotSeat !== null}
+                          className={`w-full truncate text-center text-sm font-semibold ${
+                            canManageBots && isBot ? 'text-on-surface hover:text-(--color-primary)' : 'text-on-surface'
+                          }`}
+                          aria-label={canManageBots && isBot ? `Edit bot name in seat ${idx + 1}` : undefined}
+                          title={canManageBots && isBot ? 'Click to rename' : undefined}
+                        >
+                          {label}
+                        </button>
+                      )}
                       {!isMe && !pid.startsWith('ai:') && (
                         <span className="text-muted text-xs truncate w-full text-center mt-0.5">
                           {pid}
                         </span>
                       )}
                       {canManageBots && isBot && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemoveBot(idx)}
-                          disabled={removingBotSeat !== null || addingBotSeat !== null}
-                          className="btn-secondary text-xs py-1 px-2 mt-1 text-danger hover:text-danger"
-                          aria-label={`Remove bot from seat ${idx + 1}`}
-                          title={`Remove bot from seat ${idx + 1}`}
-                        >
-                          {removingBotSeat === idx ? 'Removing…' : 'Remove bot'}
-                        </button>
+                        <div className="mt-1 inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => void handleRemoveBot(idx)}
+                            disabled={removingBotSeat !== null || addingBotSeat !== null}
+                            className="btn-secondary text-xs py-1 px-2 text-danger hover:text-danger"
+                            aria-label={`Remove bot from seat ${idx + 1}`}
+                            title={`Remove bot from seat ${idx + 1}`}
+                          >
+                            {removingBotSeat === idx ? 'Removing…' : 'Remove'}
+                          </button>
+                        </div>
                       )}
                     </>
                   ) : (
