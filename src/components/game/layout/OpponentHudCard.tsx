@@ -89,7 +89,7 @@ export function OpponentHudCard({
   const mostRecentDiscard = discards.length ? discards[discards.length - 1] : null;
 
   const cardShell = [
-    'flex min-w-0 flex-col rounded-2xl border border-border bg-surface p-[var(--game-hud-v-pad)] max-[520px]:p-3 gap-[var(--game-hud-v-gap)]',
+    'flex h-full min-w-0 flex-col rounded-2xl border border-border bg-surface p-[var(--game-hud-v-pad)] max-[520px]:p-3 gap-[var(--game-hud-v-gap)]',
     active ? 'hud-seat-active' : '',
     !active && wasTurn ? 'hud-seat-prev-turn' : '',
   ].join(' ');
@@ -127,11 +127,11 @@ export function OpponentHudCard({
             )
           ) : mostRecentDiscard ? (
             <CornerFrame label="Most recent discard" subtle>
-              <TileView tile={mostRecentDiscard} className="tile-strip shadow-none" />
+              <TileView tile={mostRecentDiscard} className="tile-indicator shadow-none" />
             </CornerFrame>
           ) : (
             <CornerFrame label="No discards yet" subtle>
-              <span className="flex size-[clamp(1.5rem,3.2vw,2rem)] items-center justify-center text-xs font-black text-muted" aria-hidden>
+              <span className="tile-indicator inline-flex items-center justify-center text-xs font-black text-muted" aria-hidden>
                 —
               </span>
             </CornerFrame>

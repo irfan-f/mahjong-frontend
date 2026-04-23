@@ -2,7 +2,11 @@
 export function TileStripPlaceholder({ tileClass }: { tileClass: string }) {
   return (
     <span
-      className={`${tileClass} shrink-0 rounded-sm border border-dashed border-border/50 bg-surface-panel-muted/25 shadow-none`}
+      className={[
+        'tile-face inline-flex items-center justify-center overflow-hidden select-none',
+        tileClass,
+        'shrink-0 rounded-sm border border-dashed border-border/50 bg-surface-panel-muted/25 shadow-none',
+      ].join(' ')}
       aria-hidden
     />
   );

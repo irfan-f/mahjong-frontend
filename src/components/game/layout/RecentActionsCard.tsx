@@ -13,7 +13,7 @@ export function RecentActionsCard({
 
   return (
     <section
-      className="flex min-h-0 flex-col gap-[var(--game-hud-v-gap)] rounded-2xl border border-border bg-surface p-[var(--game-hud-v-pad)] max-[520px]:p-3"
+      className="flex h-full min-h-0 flex-col gap-[var(--game-hud-v-gap)] rounded-2xl border border-border bg-surface p-[var(--game-hud-v-pad)] max-[520px]:p-3"
       aria-label="Recent actions"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -24,8 +24,10 @@ export function RecentActionsCard({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-border/40 bg-surface-panel-muted/10 px-3 py-6 text-center">
-        <span className="text-sm font-black text-muted">Work in Progress</span>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex min-h-full items-center justify-center rounded-xl border border-dashed border-border/40 bg-surface-panel-muted/10 px-3 py-6 text-center">
+          <span className="text-sm font-black text-muted">Work in Progress</span>
+        </div>
       </div>
     </section>
   );
