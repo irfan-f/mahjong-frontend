@@ -1,4 +1,12 @@
-import type { Lobby, Game, Tile, UserLobbySummary, ScoringBreakdownEntry } from '../types';
+import type {
+  Lobby,
+  Game,
+  Tile,
+  UserLobbySummary,
+  ScoringContext,
+  ScoringResult,
+  ScoringBreakdownEntry,
+} from '../types';
 import { DEFAULT_RULESET_ID, type RulesetId } from '../terminology/rulesetTerminology';
 import { apiFetch } from './client';
 
@@ -15,7 +23,7 @@ async function throwOnError(res: Response): Promise<void> {
     const data = JSON.parse(text);
     if (data?.error) msg = data.error;
   } catch {
-    // Non-JSON error response; fall back to raw body text.
+    /* ignore */
   }
   throw new Error(msg);
 }
@@ -92,21 +100,6 @@ export async function removeBotFromLobbySeat(
   const res = await apiFetch(`/api/lobby/${lobbyId}/seats/${seatIndex}/bot`, {
     method: 'DELETE',
     body: JSON.stringify({}),
-    token,
-  });
-  await throwOnError(res);
-  return res.json();
-}
-
-export async function renameBotInLobbySeat(
-  lobbyId: string,
-  seatIndex: number,
-  displayName: string,
-  token: string | null
-): Promise<{ message: string; lobbyId: string; seatIndex: number; playerId: string; displayName: string }> {
-  const res = await apiFetch(`/api/lobby/${lobbyId}/seats/${seatIndex}/bot`, {
-    method: 'PUT',
-    body: JSON.stringify({ aiProfile: { displayName } }),
     token,
   });
   await throwOnError(res);
@@ -193,6 +186,30 @@ export async function mahjong(
     token,
   });
   await throwOnError(res);
+  return res.json();
+}
+
+export async function scoreHand(
+  context: ScoringContext,
+  token: string | null,
+  ruleSetId: RulesetId = DEFAULT_RULESET_ID
+): Promise<ScoringResult> {
+  const res = await apiFetch('/api/scoring/score', {
+    method: 'POST',
+    body: JSON.stringify({ context, ruleSetId }),
+    token,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const data = JSON.parse(text);
+      if (data?.error) msg = data.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
   return res.json();
 }
 

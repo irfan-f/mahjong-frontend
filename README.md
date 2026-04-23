@@ -42,9 +42,12 @@ See `.env.example`. Do not commit `.env`.
 
 ## Routes
 
-- `/` — Home (sign in / create or join lobby)
+- `/` — Home (sign in / create or join lobby, and entry to the single-player tutorial)
 - `/lobby/:id` — Lobby room (join, start game when 4 players)
 - `/game/:gameId` — Game table (draw, discard, declare Mahjong)
+- `/learn` — Guided single-player tutorial using scripted mock game states
+- `/what-if` — Explore a what-if analyzer / sandbox
+- `/what-if/:gameId` — What-if view for an existing game
 
 ## Stack
 

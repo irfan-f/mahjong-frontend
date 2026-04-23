@@ -88,3 +88,9 @@ export function wallTilesPerQuadrant(
   return c;
 }
 
+/** Tutorial / DOM anchor: opponent panel by compass wind (East = you, never an opponent slot). */
+export type OpponentWindAnchor = 'opponent-north' | 'opponent-east' | 'opponent-south' | 'opponent-west';
+
+export function tutorialAnchorForOpponentWind(wind: WindTileValue): OpponentWindAnchor {
+  return `opponent-${wind}` as OpponentWindAnchor;
+}

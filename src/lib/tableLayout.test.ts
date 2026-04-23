@@ -30,9 +30,9 @@ describe('computeWallCutIndex', () => {
     const ids = ['p1', 'p2', 'p3', 'p4'];
     // idx=0, ((0+7)%4)*34=102, (102+14)%136=116
     expect(computeWallCutIndex(7, 'p1', ids, 136)).toBe(116);
-    const playerIds = ['p1', 'p2', 'p3', 'p4'];
+    const tutorialLike = ['p1', 'p2', 'p3', 'p4'];
     // East at index 3, dice 7 → 82 (same as mock-user dealer layout)
-    expect(computeWallCutIndex(7, 'p4', playerIds, 136)).toBe(82);
+    expect(computeWallCutIndex(7, 'p4', tutorialLike, 136)).toBe(82);
   });
 });
 

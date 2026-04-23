@@ -43,6 +43,20 @@ export function AppNav({ onItemClick, variant = 'header', className }: AppNavPro
       >
         Home
       </NavLink>
+      <NavLink
+        to="/learn"
+        onClick={onItemClick}
+        className={({ isActive }) => navLinkClassName(isActive, variant)}
+      >
+        Learn (WIP)
+      </NavLink>
+      <NavLink
+        to="/what-if"
+        onClick={onItemClick}
+        className={({ isActive }) => navLinkClassName(isActive, variant)}
+      >
+        Scorer
+      </NavLink>
     </nav>
   );
 }

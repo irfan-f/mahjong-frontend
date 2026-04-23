@@ -30,13 +30,16 @@ export function TileBackView({
   const src = tileBackAssetPath();
   const effectiveTitle = titleProp ?? (ariaHidden ? undefined : ariaLabel);
 
+  const tileFace =
+    'rounded-md bg-white border border-gray-300/90 shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]';
+
   const content = (
-    <span className="relative h-full w-full flex items-center justify-center p-0">
+    <span className="relative h-full w-full flex items-center justify-center p-0.5">
       <img
         src={src}
         alt=""
         draggable={false}
-        className="h-full w-full max-w-none object-contain object-center select-none"
+        className="h-full w-full object-contain select-none"
         loading="lazy"
         onError={(e) => {
           const target = e.currentTarget;
@@ -57,7 +60,7 @@ export function TileBackView({
 
   return (
     <span
-      className={`tile-face inline-flex items-center justify-center overflow-hidden select-none ${className}`}
+      className={`inline-flex items-center justify-center overflow-hidden select-none ${tileFace} ${className}`}
       title={effectiveTitle}
       {...(ariaHidden ? { 'aria-hidden': true } : { 'aria-label': ariaLabel, role: 'img' })}
     >
@@ -76,8 +79,6 @@ export interface TileViewProps {
   disabled?: boolean;
   /** Visual emphasis (e.g. selected for discard). */
   selected?: boolean;
-  /** Border/focus accent when `selected` is true: discard, meld/claim, or default. */
-  selectedTone?: 'default' | 'danger' | 'primary';
   'aria-label'?: string;
   title?: string;
 }
@@ -89,26 +90,23 @@ export function TileView({
   onClick,
   disabled,
   selected,
-  selectedTone = 'default',
   'aria-label': ariaLabel,
   title: titleProp,
 }: TileViewProps) {
   const showLabel = useTileLabel();
   const label = tileToLabel(tile);
   const src = tileToAssetPath(tile);
-  const effectiveTitle = titleProp ? `${label} — ${titleProp}` : label;
-  const effectiveAriaLabel = ariaLabel
-    ? (ariaLabel.includes(label) ? ariaLabel : `${label}. ${ariaLabel}`)
-    : label;
+  const effectiveTitle = titleProp ?? label;
+  const effectiveAriaLabel = ariaLabel ?? label;
   const compactLabel = showLabel ? tileCompactLabel(tile) : '';
 
   const content = (
-    <span className="relative h-full w-full flex items-center justify-center p-0">
+    <span className="relative h-full w-full flex items-center justify-center p-0.5">
       <img
         src={src}
         alt=""
         draggable={false}
-        className="h-full w-full max-w-none object-contain object-center select-none"
+        className="h-full w-full object-contain select-none"
         loading="lazy"
         onError={(e) => {
           const target = e.currentTarget;
@@ -125,8 +123,8 @@ export function TileView({
       </span>
       {compactLabel && (
         <span
-          className="pointer-events-none absolute bottom-0 inset-x-0 rounded-b-md bg-black/60 px-0.5 py-0.5 text-center font-black leading-none text-white"
-          style={{ fontSize: '0.72rem' }}
+          className="pointer-events-none absolute bottom-0 inset-x-0 rounded-b-md bg-black/50 text-center font-bold leading-tight text-white"
+          style={{ fontSize: '0.55rem' }}
           aria-hidden
         >
           {compactLabel}
@@ -135,18 +133,14 @@ export function TileView({
     </span>
   );
 
+  const tileFace =
+    'rounded-md bg-white border border-gray-300/90 shadow-[0_1px_3px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]';
+
+  const tileButtonHover =
+    'hover:border-gray-500 hover:shadow-[0_2px_6px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] active:scale-[0.98]';
+
   const selectedLift =
-    selectedTone === 'danger'
-      ? 'tile-selected-lift tile-selected-lift--danger'
-      : selectedTone === 'primary'
-        ? 'tile-selected-lift tile-selected-lift--primary'
-        : 'tile-selected-lift tile-selected-lift--focus';
-  const focusRingClass =
-    selectedTone === 'danger'
-      ? 'focus-visible:ring-(--color-danger)'
-      : selectedTone === 'primary'
-        ? 'focus-visible:ring-(--color-primary)'
-        : 'focus-visible:ring-(--color-ring-focus)';
+    'relative z-10 -translate-y-1.5 border-[3px] border-(--color-ring-focus) shadow-[0_10px_22px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] sm:-translate-y-2';
 
   if (asButton) {
     return (
@@ -157,7 +151,7 @@ export function TileView({
         aria-label={effectiveAriaLabel}
         title={effectiveTitle}
         aria-pressed={selected ? true : undefined}
-        className={`tile-face tile-face-interactive cursor-pointer select-none inline-flex min-h-0 min-w-0 items-center justify-center overflow-hidden transition-[transform,box-shadow,border-color] duration-150 focus:outline-none focus-visible:ring-2 ${focusRingClass} focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className} ${
+        className={`cursor-pointer select-none inline-flex items-center justify-center overflow-hidden min-w-0 min-h-0 transition-[transform,box-shadow,border-color] duration-150 ${tileFace} ${tileButtonHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-ring-focus) focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${className} ${
           selected ? selectedLift : ''
         }`}
       >
@@ -169,7 +163,7 @@ export function TileView({
   return (
     <span
       role="img"
-      className={`tile-face inline-flex items-center justify-center overflow-hidden select-none ${className}`}
+      className={`inline-flex items-center justify-center overflow-hidden select-none ${tileFace} ${className}`}
       title={effectiveTitle}
       aria-label={effectiveAriaLabel}
     >
