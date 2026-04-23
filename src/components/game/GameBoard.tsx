@@ -272,7 +272,6 @@ export function GameBoard({
   const useGroupSelectMode = claimSelectGroupCount > 1;
   const isNumericSuit = (tile: Tile) =>
     tile._type === 'dot' || tile._type === 'character' || tile._type === 'stick';
-  // (Removed) legacy meld strip counters used by non-scoreboard HUD.
 
   const canCompleteChow = (selected: Tile[], candidate: Tile): boolean => {
     const next = [...selected, candidate];

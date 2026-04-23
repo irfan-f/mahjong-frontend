@@ -50,7 +50,7 @@ function CornerFrame({
 function MeldGroup({ meld, isOwner, tileClass }: { meld: PlayerMeld; isOwner: boolean; tileClass: string }) {
   return (
     <div
-      className="flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-surface-panel px-1 py-0.5 sm:gap-1 sm:px-1.5 sm:py-1"
+      className="flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-surface-panel px-3 py-0.5 sm:gap-1 sm:px-3 sm:py-1"
       title={meld.type}
     >
       <PlayerMeldFaceTiles meld={meld} isOwner={isOwner} tileClassName={`${tileClass} shadow-none`} />
@@ -141,29 +141,7 @@ export function OpponentHudCard({
 
       <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
         <div
-          className="flex min-w-0 flex-1 items-center justify-start gap-2.5 overflow-x-hidden"
-          role="group"
-          aria-label="Discards"
-        >
-          <span className="inline-flex shrink-0 items-center justify-center text-muted sm:hidden" aria-hidden>
-            <Icon src={icons.delete} className="size-3.5 shrink-0 [&_.icon-svg]:size-3.5" />
-          </span>
-          <span className="hidden shrink-0 text-[0.75rem] font-black uppercase tracking-[0.06em] text-muted sm:inline" aria-hidden>
-            Discards
-          </span>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
-            {recentDiscards.length === 0 ? (
-              <TileStripPlaceholder tileClass="tile-strip" />
-            ) : (
-              recentDiscards.map((t, i) => (
-                <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="tile-strip shrink-0 shadow-none" />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div
-          className="flex min-w-0 flex-1 items-center justify-end gap-2.5 overflow-x-hidden"
+          className="flex min-w-0 flex-none items-center justify-end gap-2.5 overflow-x-hidden md:flex-1"
           role="group"
           aria-label="Melds"
         >
@@ -174,7 +152,7 @@ export function OpponentHudCard({
               Melds
             </span>
           )}
-          <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-2.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
+          <div className="flex min-w-0 w-full flex-1 flex-nowrap items-center justify-start gap-2.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
             {melds.length === 0 ? (
               <EmptyMeldsStripPlaceholder tileClass="tile-strip" />
             ) : (
@@ -184,6 +162,28 @@ export function OpponentHudCard({
                 .map((m: PlayerMeld) => (
                   <MeldGroup key={m.meldId} meld={m} isOwner={false} tileClass="tile-strip" />
                 ))
+            )}
+          </div>
+        </div>
+
+        <div
+          className="flex min-w-0 flex-none items-center justify-start gap-2.5 overflow-x-hidden md:flex-1"
+          role="group"
+          aria-label="Discards"
+        >
+          <span className="inline-flex shrink-0 items-center justify-center text-muted sm:hidden" aria-hidden>
+            <Icon src={icons.delete} className="size-3.5 shrink-0 [&_.icon-svg]:size-3.5" />
+          </span>
+          <span className="hidden shrink-0 text-[0.75rem] font-black uppercase tracking-[0.06em] text-muted sm:inline" aria-hidden>
+            Discards
+          </span>
+          <div className="flex min-w-0 w-full flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
+            {recentDiscards.length === 0 ? (
+              <TileStripPlaceholder tileClass="tile-strip" />
+            ) : (
+              recentDiscards.map((t, i) => (
+                <TileView key={`${t._type}-${String(t.value)}-${i}`} tile={t} className="tile-strip shrink-0 shadow-none" />
+              ))
             )}
           </div>
         </div>

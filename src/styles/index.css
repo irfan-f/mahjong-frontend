@@ -75,8 +75,17 @@
   }
 
   .recent-row-latest {
-    @apply -ml-2.5 border-l-[3px] pl-2.5;
-    border-left-color: color-mix(in srgb, var(--color-your-turn) 70%, var(--color-border));
+    position: relative;
+  }
+  .recent-row-latest::before {
+    content: '';
+    position: absolute;
+    left: -0.625rem; /* matches previous -ml-2.5 */
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--color-your-turn) 70%, var(--color-border));
   }
   .turn-indicator-frame {
     @apply absolute inset-[clamp(2px,0.5vh,3px)] rounded-xl border-2 bg-surface/70 backdrop-blur-sm dark:bg-surface/40;
@@ -128,8 +137,7 @@
     box-shadow:
       0 0 0 6px color-mix(in srgb, var(--color-your-turn) 22%, transparent),
       0 0 26px color-mix(in srgb, var(--color-your-turn) 26%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-your-turn) 14%, transparent),
-      inset 0 0 0 999px color-mix(in srgb, var(--color-your-turn) 3.5%, transparent);
+      inset 0 1px 0 color-mix(in srgb, var(--color-your-turn) 14%, transparent);
   }
   .hud-panel-prev-turn {
     border-color: color-mix(in srgb, var(--color-prev-turn) 55%, var(--color-border));

@@ -166,60 +166,107 @@ export function buildRecentActions(game: Game, windByPlayer: Record<string, Wind
   }
 
   const hist = game.discardHistory ?? [];
-  const discardActions: RecentAction[] = [];
+
+  type TimedAction = {
+    sortKey: number;
+    action: RecentAction;
+  };
+
+  const timed: TimedAction[] = [];
+
+  // Discards: use `discardHistory` indices as stable ordering keys.
+  // Keep enough tail so a discard that gets claimed doesn't push the discard out of view.
+  const tailStart = Math.max(0, hist.length - 12);
+  for (let i = tailStart; i < hist.length; i++) {
+    const e = hist[i]!;
+    timed.push({
+      sortKey: i,
+      action: {
+        kind: 'discard',
+        actorId: e.playerId,
+        actorWind: windByPlayer[e.playerId],
+        tile: e.tile,
+      },
+    });
+  }
+
+  // If the backend provides `lastDiscardedTile` but it isn't yet in `discardHistory`,
+  // include it as the newest discard. (Do not let a subsequent claim "replace" it.)
   if (game.lastDiscardedTile) {
     const did = resolveDiscarderIdFromGame(game);
     const last = hist[hist.length - 1];
     const matchesLast =
       Boolean(did && last && last.playerId === did && tileEq(last.tile, game.lastDiscardedTile));
     if (did && !matchesLast) {
-      discardActions.push({
-        kind: 'discard',
-        actorId: did,
-        actorWind: windByPlayer[did],
-        tile: game.lastDiscardedTile,
+      timed.push({
+        sortKey: hist.length,
+        action: {
+          kind: 'discard',
+          actorId: did,
+          actorWind: windByPlayer[did],
+          tile: game.lastDiscardedTile,
+        },
       });
     }
   }
-  const tailStart = Math.max(0, hist.length - 8);
-  for (let i = hist.length - 1; i >= tailStart; i--) {
-    const e = hist[i]!;
-    discardActions.push({
-      kind: 'discard',
-      actorId: e.playerId,
-      actorWind: windByPlayer[e.playerId],
-      tile: e.tile,
+
+  // Claims: place immediately after the discard they claim (same fromId + claimedTile match).
+  // When we can't confidently match, fall back to an ordering *after* the newest discard.
+  const claims = collectDiscardClaimMelds(game).sort(
+    (a, b) => meldRecencyWeight(b.meld.meldId) - meldRecencyWeight(a.meld.meldId),
+  );
+
+  for (const { actorId, meld } of claims) {
+    const claimedTile =
+      meld.tiles && meld.claimedTileIndex != null ? meld.tiles[meld.claimedTileIndex] ?? null : null;
+
+    let claimedDiscardIndex: number | null = null;
+    if (claimedTile) {
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const e = hist[i]!;
+        if (e.playerId !== meld.claimedFromPlayerId) continue;
+        if (tileEq(e.tile, claimedTile)) {
+          claimedDiscardIndex = i;
+          break;
+        }
+      }
+    }
+
+    const baseKey = claimedDiscardIndex ?? hist.length;
+    const claimKey = baseKey + 0.5 + Math.min(0.49, meldRecencyWeight(meld.meldId) / 1e16);
+
+    timed.push({
+      sortKey: claimKey,
+      action: {
+        kind: 'claim',
+        actorId,
+        actorWind: windByPlayer[actorId],
+        fromId: meld.claimedFromPlayerId!,
+        fromWind: windByPlayer[meld.claimedFromPlayerId!],
+        meldType: meld.type,
+        claimedTile,
+      },
     });
   }
 
-  const claims = collectDiscardClaimMelds(game)
-    .sort((a, b) => meldRecencyWeight(b.meld.meldId) - meldRecencyWeight(a.meld.meldId))
-    .map(({ actorId, meld }) => ({
-      kind: 'claim' as const,
-      actorId,
-      actorWind: windByPlayer[actorId],
-      fromId: meld.claimedFromPlayerId!,
-      fromWind: windByPlayer[meld.claimedFromPlayerId!],
-      meldType: meld.type,
-      claimedTile: meld.tiles && meld.claimedTileIndex != null ? meld.tiles[meld.claimedTileIndex] ?? null : null,
-    }));
+  timed.sort((a, b) => b.sortKey - a.sortKey);
 
-  const merged = [...claims, ...discardActions];
-
-  const deduped: RecentAction[] = [];
-  for (const a of merged) {
-    const prev = deduped[deduped.length - 1];
+  // Only de-dupe exact duplicate consecutive discards (can happen when lastDiscardedTile races the history).
+  const out: RecentAction[] = [];
+  for (const { action } of timed) {
+    const prev = out[out.length - 1];
     if (
-      prev
-      && a.kind === 'discard'
-      && prev.kind === 'discard'
-      && prev.actorId === a.actorId
-      && tileEq(prev.tile, a.tile)
+      prev &&
+      action.kind === 'discard' &&
+      prev.kind === 'discard' &&
+      prev.actorId === action.actorId &&
+      tileEq(prev.tile, action.tile)
     ) {
       continue;
     }
-    deduped.push(a);
+    out.push(action);
   }
 
-  return deduped.slice(0, 3);
+  // `RecentActionsCard` controls visible length; keep the builder as a full ordered stream.
+  return out;
 }
