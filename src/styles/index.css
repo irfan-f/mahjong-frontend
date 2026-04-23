@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+/* Class-based dark mode (add .dark on html via useTheme) */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer components {
   /** Hand tiles: portrait ratio, capped size for dense rows beside the action rail. */
