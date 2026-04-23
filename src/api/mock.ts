@@ -1,10 +1,4 @@
-import type { Game, Lobby, Tile, UserLobbySummary } from '../types';
-import {
-  getNarrativeAugment,
-  getNarrativeSuggestedDiscard,
-  TN_MY_HAND_FULL,
-  TN_OPPONENT_PLACEHOLDER,
-} from '../tutorial/narrative';
+import type { Game, LegalAction, Lobby, Tile, UserLobbySummary } from '../types';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -76,81 +70,8 @@ const mockPlayerDisplayNames: Record<string, string> = {
   [p3]: 'Carol',
 };
 
-function getTutorialBaseGame(): Game {
-  const playerIds = [p1, p2, p3, me];
-  return {
-    lobby_id: 'mock-lobby',
-    playerIds,
-    startingPlayer: me,
-    playerDisplayNames: mockPlayerDisplayNames,
-    playerHands: {
-      [p1]: TN_OPPONENT_PLACEHOLDER,
-      [p2]: TN_OPPONENT_PLACEHOLDER,
-      [p3]: TN_OPPONENT_PLACEHOLDER,
-      [me]: TN_MY_HAND_FULL,
-    },
-    playerDiscards: {},
-    playerMelds: {},
-    currentPlayer: me,
-    lastDiscardedTile: null,
-    tilesLeft: 82,
-    wallDiceTotal: 7,
-    wallTotalTiles: 136,
-    initialization: {
-      playersReady: true,
-      playerOrderDecided: true,
-      tilesShuffled: true,
-      tilesDealt: true,
-    },
-    status: 'active',
-    turnState: {
-      currentPhase: 'playing',
-      playerTurn: me,
-      turn_number: 1,
-      tileDrawn: true,
-      tilesPlaced: false,
-      tileDiscarded: false,
-    },
-    private: { playerHands: {}, potentialActions: {} },
-  };
-}
-
-function getTutorialPreDealGame(): Game {
-  const base = getTutorialBaseGame();
-  return {
-    ...base,
-    playerHands: {},
-    playerDiscards: {},
-    tilesLeft: 144,
-    turnState: {
-      currentPhase: 'init',
-      playerTurn: p1,
-      turn_number: 0,
-      tileDrawn: false,
-      tilesPlaced: false,
-      tileDiscarded: false,
-    },
-    initialization: {
-      playersReady: true,
-      playerOrderDecided: true,
-      tilesShuffled: true,
-      tilesDealt: false,
-    },
-  };
-}
-
-export function getTutorialGameForStep(stepId: string): Game | null {
-  if (stepId === 'intro') return null;
-  if (stepId === 'pre-deal') return getTutorialPreDealGame();
-  const base = getTutorialBaseGame();
-  const augment = getNarrativeAugment(stepId);
-  if (augment == null) return base;
-  return { ...base, ...augment };
-}
-
-/** For discard steps, the single tile the tutorial expects the user to discard. */
-export function getTutorialSuggestedDiscard(stepId: string): Tile | null {
-  return getNarrativeSuggestedDiscard(stepId);
+function emptyLegalActions(playerIds: readonly string[]): Record<string, LegalAction[]> {
+  return Object.fromEntries(playerIds.map((id) => [id, [] as LegalAction[]]));
 }
 
 export function getMockGame(gameId: string): Game {
@@ -181,6 +102,12 @@ export function getMockGame(gameId: string): Game {
     },
     status: 'active' as const,
     turnState: { ...baseTurnState },
+    private: {
+      legalActions: {
+        ...emptyLegalActions(playerIds),
+        [me]: [{ kind: 'draw' as const }],
+      },
+    },
   };
 
   switch (gameId) {
@@ -204,6 +131,9 @@ export function getMockGame(gameId: string): Game {
           tilesShuffled: true,
           tilesDealt: false,
         },
+        private: {
+          legalActions: emptyLegalActions(playerIds),
+        },
       };
     case 'my-turn-draw':
       return {
@@ -221,8 +151,10 @@ export function getMockGame(gameId: string): Game {
         turnState: { ...baseTurnState, playerTurn: me, tileDrawn: true },
         currentPlayer: me,
         private: {
-          playerHands: {},
-          potentialActions: { [me]: ['mahjong'] },
+          legalActions: {
+            ...emptyLegalActions(playerIds),
+            [me]: [{ kind: 'declareMahjong' as const }],
+          },
         },
       };
     case 'claim': {
@@ -255,9 +187,16 @@ export function getMockGame(gameId: string): Game {
         turnState: { ...baseTurnState, playerTurn: p1, tileDrawn: true },
         currentPlayer: p1,
         private: {
-          playerHands: {},
-          potentialActions: {
-            [me]: ['chow'],
+          legalActions: {
+            ...emptyLegalActions(playerIds),
+            [me]: [
+              {
+                kind: 'claimChow' as const,
+                variantId: 'chow:dot:3-4-5',
+                meld: [tile('dot', 3), tile('dot', 4), tile('dot', 5)],
+              },
+              { kind: 'passClaim' as const },
+            ],
           },
         },
       };
@@ -277,6 +216,9 @@ export function getMockGame(gameId: string): Game {
         lastDiscardedTile: tile('dot', 3),
         playerDiscards: {
           [p1]: [tile('dot', 1), tile('dot', 2), tile('dot', 3)],
+        },
+        private: {
+          legalActions: emptyLegalActions(playerIds),
         },
       };
     default:

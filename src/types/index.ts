@@ -18,33 +18,6 @@ export interface ScoringResult {
   breakdown?: ScoringBreakdownEntry[];
 }
 
-export interface ScoringContext {
-  winnerId: string;
-  winnerHand: Tile[];
-  winnerMelds?: PlayerMeld[];
-  playerMelds?: Record<string, PlayerMeld[]>;
-  playerDiscards?: Record<string, Tile[]>;
-  discardHistory?: { playerId: string; tile: Tile }[];
-  lastDiscardedTile?: Tile | null;
-  /** Compatibility for deferred callers. */
-  winnerExposedMelds?: { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[];
-  selfDraw: boolean;
-  discarderId: string | null;
-  dealerId: string;
-  playerIds: string[];
-  roundWind?: WindTileValue;
-  wonOnLastPiece: boolean;
-  flowers?: Tile[];
-  /** PDF row 14 (ma-jiang): win on the only possible completing tile. */
-  winsOnOnlyPossibleTile?: boolean;
-  /** PDF row 18 (ma-jiang): win on the 5 completing 4-5-6. */
-  winsOnMiddleFiveOfFourFiveSixRun?: boolean;
-  /** PDF rows 22–24 (ma-jiang): special win sources. */
-  wonOnFourthTileOfRank?: boolean;
-  wonByRobbingKong?: boolean;
-  wonFromOwnKongReplacement?: boolean;
-}
-
 export type Tile =
   | { _type: NumericTileType; value: NumericTileValue; count: 4 }
   | { _type: 'wind'; value: WindTileValue; count: 4 }
@@ -101,8 +74,6 @@ export interface Game {
   playerDiscards?: Record<string, Tile[]>;
   /** Canonical meld model for both exposed and concealed melds. */
   playerMelds?: Record<string, PlayerMeld[]>;
-  /** Compatibility-only legacy field for deferred modules. */
-  playerExposedMelds?: Record<string, { type: 'pong' | 'kong' | 'chow'; tiles: Tile[] }[]>;
   turnState: {
     currentPhase: string;
     playerTurn: string;
@@ -113,6 +84,10 @@ export interface Game {
   };
   currentPlayer: string;
   lastDiscardedTile: Tile | null;
+  /** Authoritative discarder for `lastDiscardedTile` (claim window / history mismatch). */
+  lastDiscarderId?: string | null;
+  /** Chronological discards that remain after claims (each entry is the true actor). */
+  discardHistory?: { playerId: string; tile: Tile }[];
   ruleSetId?: 'default-v1' | 'ma-jiang';
   tilesLeft: number;
   /** Sum of two dice from roll & deal; drives wall break visualization. Omit → UI defaults (e.g. 7). */
@@ -138,10 +113,7 @@ export interface Game {
   /** When ended, which players have chosen to show their hand to others. */
   playerShowHand?: Record<string, boolean>;
   private?: {
-    playerHands?: Record<string, unknown>;
-    /** Coarse claim / mahjong flags (legacy); prefer legalActions when present. */
-    potentialActions?: Record<string, string[]>;
-    /** Canonical per-seat actions from the server (draw, discard groups, claims with chow variants, etc.). */
+    /** Per-seat actions from the server (draw, discard groups, claims, pass, concealed melds, mahjong). */
     legalActions?: Record<string, LegalAction[]>;
   };
 }
