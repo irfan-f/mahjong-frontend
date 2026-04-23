@@ -42,22 +42,312 @@ import {
 import { tileEquals } from '../../lib/chowClaim';
 
 import type { ScoringResult } from '../../types';
-import {
-  GameTopCluster,
-  isPreDealPhase,
-  previousPlayerId,
-  ScoreboardYouHudActionBar,
-  ScoreboardYouIdentityBar,
-  ScoreboardYouInflowStrips,
-  windToDisplayName,
-} from './layout/index.ts';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { ClaimPrompt } from './claim/ClaimPrompt';
-import type { SelectedClaimGroup } from './claim/claimSelection';
-import { EMPTY_DISCARDS, EMPTY_HAND, EMPTY_LEGAL, EMPTY_MELDS } from './gameBoardConstants';
-import { GameEndSummary } from './GameEndSummary';
-import { useClaimWindowCountdown } from '../../hooks/useClaimWindowCountdown';
-import { HudActionButton } from './HudActionButton';
+import { WallTable } from './WallTable';
+import { MobileWallSection } from './MobileWallSection';
+import { OpponentSeatCard } from './OpponentSeatCard';
+import { OpponentMobileCard } from './OpponentMobileCard';
+import { Icon } from '../Icon';
+import { icons } from '../../icons';
+
+const HAND_TILE_SIZES = [
+  'h-9 w-[1.5rem]',
+  'h-11 w-[1.875rem]',
+  'h-14 w-10',
+  'h-[4.25rem] w-[3rem]',
+  'h-20 w-14',
+  'h-24 w-[4.25rem]',
+  'h-28 w-20',
+] as const;
+const HAND_SCALE_LABELS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'] as const;
+
+const MELD_DISCARD_TILE_SIZES = [
+  'h-5 w-3.5',
+  'h-6 w-4',
+  'h-7 w-5',
+  'h-9 w-[1.625rem]',
+  'h-11 w-7',
+  'h-14 w-10',
+] as const;
+const MELD_DISCARD_SCALE_LABELS = ['XS', 'S', 'M', 'L', 'XL', '2XL'] as const;
+
+const EMPTY_HAND: Tile[] = [];
+const EMPTY_MELODS: PlayerMeld[] = [];
+const EMPTY_DISCARDS: Tile[] = [];
+const EMPTY_LEGAL: LegalAction[] = [];
+
+function formatChowMeldShort(meld: Tile[]): string {
+  return meld.map((t) => tileToLabel(t)).join('–');
+}
+
+function tileIdentity(t: Tile): string {
+  return `${t._type}:${String(t.value)}`;
+}
+
+function tokenBase(token: string): string {
+  const idx = token.lastIndexOf('#');
+  return idx >= 0 ? token.slice(0, idx) : token;
+}
+
+function makeHandTokens(hand: Tile[]): string[] {
+  const counts: Record<string, number> = {};
+  return hand.map((t) => {
+    const base = tileIdentity(t);
+    const next = (counts[base] ?? 0) + 1;
+    counts[base] = next;
+    return `${base}#${next}`;
+  });
+}
+
+function resolveOrderToIndices(hand: Tile[], order: string[]): number[] {
+  const byBase: Record<string, number[]> = {};
+  for (let i = 0; i < hand.length; i++) {
+    const base = tileIdentity(hand[i]!);
+    (byBase[base] ??= []).push(i);
+  }
+
+  const out: number[] = [];
+  const used = new Set<number>();
+  for (const tok of order) {
+    const base = tokenBase(tok);
+    const list = byBase[base];
+    if (!list || list.length === 0) continue;
+    const idx = list.shift()!;
+    if (used.has(idx)) continue;
+    used.add(idx);
+    out.push(idx);
+  }
+
+  for (let i = 0; i < hand.length; i++) {
+    if (!used.has(i)) out.push(i);
+  }
+  return out;
+}
+
+function reconcileOrder(prevOrder: string[], nextHand: Tile[]): string[] {
+  const nextTokens = makeHandTokens(nextHand);
+  const remainingByBase: Record<string, number> = {};
+  for (const tok of nextTokens) {
+    const base = tokenBase(tok);
+    remainingByBase[base] = (remainingByBase[base] ?? 0) + 1;
+  }
+
+  const kept: string[] = [];
+  for (const tok of prevOrder) {
+    const base = tokenBase(tok);
+    const n = remainingByBase[base] ?? 0;
+    if (n <= 0) continue;
+    remainingByBase[base] = n - 1;
+    kept.push(tok);
+  }
+
+  const added: string[] = [];
+  const takenByBase: Record<string, number> = {};
+  for (const tok of kept) {
+    const base = tokenBase(tok);
+    takenByBase[base] = (takenByBase[base] ?? 0) + 1;
+  }
+  const seen: Record<string, number> = {};
+  for (const tok of nextTokens) {
+    const base = tokenBase(tok);
+    seen[base] = (seen[base] ?? 0) + 1;
+    if ((seen[base] ?? 0) <= (takenByBase[base] ?? 0)) continue;
+    added.push(tok);
+  }
+
+  return [...kept, ...added];
+}
+
+function tileSortKey(t: Tile): string {
+  const suitOrder: Record<Tile['_type'], number> = {
+    character: 0,
+    dot: 1,
+    stick: 2,
+    wind: 3,
+    dragon: 4,
+  };
+  const windOrder: Record<string, number> = { east: 0, south: 1, west: 2, north: 3 };
+  const dragonOrder: Record<string, number> = { red: 0, green: 1, white: 2 };
+
+  const suit = suitOrder[t._type];
+  const v =
+    t._type === 'wind'
+      ? windOrder[String(t.value)] ?? 99
+      : t._type === 'dragon'
+        ? dragonOrder[String(t.value)] ?? 99
+        : (t.value as number);
+
+  return `${String(suit).padStart(2, '0')}-${String(v).padStart(2, '0')}`;
+}
+
+function SortableHandTile({
+  id,
+  disabled,
+  label,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({ id, disabled });
+
+  const onPointerDown = listeners?.['onPointerDown'] as React.PointerEventHandler | undefined;
+  const onKeyDown = listeners?.['onKeyDown'] as React.KeyboardEventHandler | undefined;
+
+  const ariaAttributes = { ...attributes } as Record<string, unknown>;
+  delete ariaAttributes['role'];
+  delete ariaAttributes['tabIndex'];
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    touchAction: 'manipulation',
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={[
+        'list-none inline-flex flex-col items-center select-none relative',
+        isDragging ? 'opacity-0' : '',
+        !disabled && !isDragging ? 'cursor-grab active:cursor-grabbing' : '',
+        isOver && !isDragging ? 'after:absolute after:inset-y-0 after:-left-[3px] after:w-[3px] after:rounded-full after:bg-(--color-primary)/70' : '',
+      ].filter(Boolean).join(' ')}
+      onPointerDown={onPointerDown}
+      {...ariaAttributes}
+    >
+      {children}
+      {!disabled && (
+        <button
+          type="button"
+          className="sr-only"
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          aria-label={`Reorder ${label} — press Space to pick up, arrow keys to move, Space again to drop`}
+        />
+      )}
+    </li>
+  );
+}
+
+function ClaimCountdownBar({ secondsLeft, totalSeconds }: { secondsLeft: number; totalSeconds: number }) {
+  const total = Math.max(1, totalSeconds);
+  const pct = Math.min(100, Math.round((secondsLeft / total) * 100));
+  const urgent = secondsLeft <= 5;
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted">Claim window</span>
+        <span
+          className={`text-xs font-bold tabular-nums ${urgent ? 'text-rose-500' : 'text-on-surface'}`}
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label={`${secondsLeft} seconds remaining to claim`}
+        >
+          {secondsLeft}s
+        </span>
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded-full bg-border/50" aria-hidden>
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${
+            urgent ? 'bg-rose-500' : secondsLeft <= 10 ? 'bg-amber-400' : 'bg-(--color-primary)'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function tileKeyForOrphans(t: Tile): string {
+  return `${t._type}:${String(t.value)}`;
+}
+
+const THIRTEEN_ORPHANS_KEYS = new Set<string>([
+  'character:1',
+  'character:9',
+  'dot:1',
+  'dot:9',
+  'stick:1',
+  'stick:9',
+  'wind:east',
+  'wind:south',
+  'wind:west',
+  'wind:north',
+  'dragon:red',
+  'dragon:green',
+  'dragon:white',
+]);
+
+function isThirteenOrphansWin(hand: Tile[]): boolean {
+  if (hand.length !== 14) return false;
+  const counts: Record<string, number> = {};
+  for (const t of hand) {
+    const k = tileKeyForOrphans(t);
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  const keys = Object.keys(counts);
+  if (keys.length !== 13) return false;
+
+  let pairs = 0;
+  for (const k of keys) {
+    if (!THIRTEEN_ORPHANS_KEYS.has(k)) return false;
+    const n = counts[k]!;
+    if (n !== 1 && n !== 2) return false;
+    if (n === 2) pairs++;
+  }
+  return pairs === 1;
+}
+
+type SelectedClaimGroup =
+  | { kind: 'pong' }
+  | { kind: 'kong' }
+  | { kind: 'chow'; variantId: string };
+
+interface ClaimTileGroupProps {
+  tiles: Tile[];
+  label: string;
+  discardIndex?: number;
+  selected: boolean;
+  dimmed?: boolean;
+  onPress: () => void;
+  disabled: boolean;
+}
+
+function ClaimTileGroup({ tiles, label, discardIndex = -1, selected, dimmed, onPress, disabled }: ClaimTileGroupProps) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={disabled}
+      aria-pressed={selected}
+      aria-label={`${label}: ${tiles.map(tileToLabel).join(', ')}`}
+      className={`inline-flex flex-col items-center gap-1 rounded-xl border px-2 py-1.5 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 ${
+        selected
+          ? 'border-(--color-primary) bg-(--color-primary)/10 shadow-md ring-1 ring-(--color-primary)/30'
+          : 'border-border/60 bg-surface-panel hover:border-(--color-primary)/50 hover:bg-surface-panel-muted/40'
+      } ${dimmed ? 'opacity-35' : ''} disabled:cursor-not-allowed disabled:opacity-50`}
+    >
+      <div className="flex gap-0.5">
+        {tiles.map((t, i) => (
+          <div key={i} className="relative">
+            <TileView tile={t} className="h-10 w-7" />
+            {i === discardIndex && (
+              <span
+                className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-(--color-primary)"
+                aria-hidden
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <span className="text-xs font-semibold leading-tight text-on-surface">{label}</span>
+    </button>
+  );
+}
 
 export interface GameBoardProps {
   game: GameType;
@@ -1473,10 +1763,10 @@ export function GameBoard({
             <button
               onClick={onRollAndDeal}
               disabled={acting}
-              loading={acting}
-              loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
+              className="btn-primary inline-flex items-center justify-center gap-2"
               aria-label={acting ? 'Rolling and dealing' : 'Roll and deal tiles'}
             >
+              {acting && <Spinner className="w-4 h-4" />}
               Roll & deal
             </button>
           )}
@@ -1485,11 +1775,10 @@ export function GameBoard({
               <button
                 onClick={onMahjong}
                 disabled={acting}
-                loading={acting}
-                loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
-                className="btn-claim-mahjong"
+                className="btn-primary btn-claim-mahjong inline-flex items-center justify-center gap-2"
                 aria-label={acting ? 'Declaring Mahjong' : 'Declare Mahjong'}
               >
+                {acting && <Spinner className="w-4 h-4" />}
                 Mahjong
               </button>
             ) : (
@@ -1497,12 +1786,11 @@ export function GameBoard({
                 type="button"
                 onClick={() => setWinMeldModalOpen(true)}
                 disabled={acting}
-                loading={acting}
-                loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
-                className="btn-claim-mahjong"
+                className="btn-primary btn-claim-mahjong inline-flex items-center justify-center gap-2"
                 aria-label={acting ? 'Opening meld declaration' : 'Define melds before Mahjong'}
                 title={`Declare ${remainingMeldsNeeded} more meld(s)`}
               >
+                {acting && <Spinner className="w-4 h-4" />}
                 Define melds to win
               </button>
             )
