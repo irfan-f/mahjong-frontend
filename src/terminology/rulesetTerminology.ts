@@ -4,10 +4,10 @@ export type MeldDisplayTerm = 'chow' | 'pong' | 'gang';
 
 export type RulesetId = 'default-v1' | 'ma-jiang';
 
-/** Default ruleset for new games and scoring-related API. */
+/** Default ruleset for new games, scoring API, and what-if when no game context. */
 export const DEFAULT_RULESET_ID: RulesetId = 'ma-jiang';
 
-/** Labels for ruleset pickers (lobby, etc.). Keep in sync with backend `ruleSetId` enum. */
+/** Labels for ruleset pickers (lobby, what-if, etc.). Keep in sync with backend `ruleSetId` enum. */
 export const RULESET_SELECT_OPTIONS: { id: RulesetId; label: string }[] = [
   { id: 'ma-jiang', label: 'Ma-jiang' },
   { id: 'default-v1', label: '1 point win' },

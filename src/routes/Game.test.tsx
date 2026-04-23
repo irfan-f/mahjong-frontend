@@ -24,6 +24,10 @@ vi.mock('../components/AccountMenu', () => ({
   AccountMenu: () => <div>AccountMenu</div>,
 }));
 
+vi.mock('../components/game/WhatIfModal', () => ({
+  WhatIfModal: () => null,
+}));
+
 vi.mock('../api/endpoints', () => ({
   getGame: (...args: unknown[]) => mockGetGame(...args),
   rollAndDealTiles: vi.fn(),

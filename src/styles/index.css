@@ -1,175 +1,18 @@
-@config "../../tailwind.config.ts";
 @import 'tailwindcss';
 
-@keyframes notice-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Class-based dark mode (add .dark on html via useTheme) */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@layer components {
-  /** Hand tiles: portrait ratio, capped size for dense rows beside the action rail. */
-  .tile-hand {
-    box-sizing: border-box;
-    flex-shrink: 0;
-    aspect-ratio: 7 / 9.5;
-    height: auto;
-    width: clamp(1.75rem, calc(0.45rem + 2.8vmin + 0.9vw), 2.65rem);
-    max-width: 100%;
-    max-height: min(28svh, 3.75rem, 20vmin);
-  }
-
-  @media (max-height: 700px) {
-    .tile-hand {
-      width: clamp(1.5rem, calc(0.4rem + 2.2vmin + 0.7vw), 2.35rem);
-      max-height: min(24svh, 3.25rem, 17vmin);
-    }
-  }
-
-  /** Strip / HUD tiles: melds, discards, recent discard, opponent rows. */
-  .tile-strip {
-    box-sizing: border-box;
-    flex-shrink: 0;
-    aspect-ratio: 7 / 9.5;
-    height: auto;
-    width: clamp(1.05rem, calc(0.35rem + 2.8vmin + 1.5vw), 2.35rem);
-    max-width: 100%;
-    max-height: min(26svh, 3.25rem, 22vmin);
-  }
-
-  @media (max-height: 700px) {
-    .tile-strip {
-      width: clamp(0.95rem, calc(0.3rem + 2.4vmin + 1.2vw), 2rem);
-      max-height: min(22svh, 2.75rem, 18vmin);
-    }
-  }
-
-  /**
-   * HUD accents use CSS color-mix(): blends theme colors (e.g. primary + border)
-   * so borders/rings feel on-brand without hard hex pairs everywhere.
-   */
-  /* NOTE: these are duplicated in @layer utilities below so they override Tailwind border utilities. */
-  .badge-dealer {
-    @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.72rem] font-black text-text-primary sm:py-1 sm:text-[0.78rem];
-    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-    background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-  }
-  /* (Removed) btn-hud-soft*: keep HUD actions consistent with btn-primary/btn-secondary sizing. */
-
-  @media (min-height: 800px) {
-    .game-hud-dock .btn-primary,
-    .game-hud-dock .btn-secondary {
-      min-height: clamp(2.875rem, 6vh, 3.375rem);
-      padding-top: clamp(0.6rem, 1.6vh, 0.95rem);
-      padding-bottom: clamp(0.6rem, 1.6vh, 0.95rem);
-      padding-left: clamp(1.1rem, 3vw, 1.65rem);
-      padding-right: clamp(1.1rem, 3vw, 1.65rem);
-      font-size: clamp(0.9375rem, 2vh, 1.0625rem);
-    }
-    /* btn-primary/btn-secondary are the single source of truth for HUD action sizing */
-  }
-
-  .recent-row-latest {
-    @apply -ml-2.5 border-l-[3px] pl-2.5;
-    border-left-color: color-mix(in srgb, var(--color-your-turn) 70%, var(--color-border));
-  }
-  .turn-indicator-frame {
-    @apply absolute inset-[clamp(2px,0.5vh,3px)] rounded-xl border-2 bg-surface/70 backdrop-blur-sm dark:bg-surface/40;
-    border-color: color-mix(in srgb, var(--color-your-turn) 70%, var(--color-border));
-  }
-  .tile-selected-lift {
-    @apply relative z-10 -translate-y-1.5 border-[3px] sm:-translate-y-2;
-    box-shadow:
-      0 10px 22px rgba(0, 0, 0, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  }
-  .tile-selected-lift--focus {
-    border-color: var(--color-ring-focus);
-  }
-  .tile-selected-lift--danger {
-    border-color: var(--color-danger);
-    box-shadow:
-      0 10px 22px color-mix(in srgb, var(--color-danger) 22%, rgba(0, 0, 0, 0.2)),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  }
-  .tile-selected-lift--primary {
-    border-color: var(--color-primary);
-    box-shadow:
-      0 10px 22px color-mix(in srgb, var(--color-primary) 24%, rgba(0, 0, 0, 0.2)),
-      inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  }
-  .tile-face {
-    @apply rounded-md border border-gray-300/90;
-    /* Explicit fill: @apply bg-white can lose to UA / preflight on <button>; face SVGs need an opaque backing. */
-    background-color: #ffffff;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  }
-  .tile-face-interactive {
-    @apply hover:border-gray-500 active:scale-[0.98];
-  }
-  .tile-face-interactive:hover {
-    background-color: #ffffff;
-    box-shadow:
-      0 2px 6px rgba(0, 0, 0, 0.12),
-      inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  }
-}
-
-@layer utilities {
-  .hud-panel-your-turn {
-    border-color: color-mix(in srgb, var(--color-your-turn) 82%, var(--color-border));
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--color-your-turn) 22%, transparent),
-      0 0 26px color-mix(in srgb, var(--color-your-turn) 26%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-your-turn) 14%, transparent),
-      inset 0 0 0 999px color-mix(in srgb, var(--color-your-turn) 3.5%, transparent);
-  }
-  .hud-panel-prev-turn {
-    border-color: color-mix(in srgb, var(--color-prev-turn) 55%, var(--color-border));
-    box-shadow:
-      0 0 0 4px color-mix(in srgb, var(--color-prev-turn) 18%, transparent),
-      0 0 14px color-mix(in srgb, var(--color-prev-turn) 16%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-prev-turn) 10%, transparent);
-  }
-  .hud-seat-active {
-    border-color: color-mix(in srgb, var(--color-your-turn) 78%, var(--color-border));
-    box-shadow:
-      0 0 0 5px color-mix(in srgb, var(--color-your-turn) 18%, transparent),
-      0 0 22px color-mix(in srgb, var(--color-your-turn) 22%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-your-turn) 14%, transparent),
-      inset 0 0 0 999px color-mix(in srgb, var(--color-your-turn) 3.5%, transparent);
-  }
-  .hud-seat-prev-turn {
-    border-color: color-mix(in srgb, var(--color-prev-turn) 55%, var(--color-border));
-    box-shadow:
-      0 0 0 4px color-mix(in srgb, var(--color-prev-turn) 18%, transparent),
-      0 0 14px color-mix(in srgb, var(--color-prev-turn) 16%, transparent),
-      inset 0 1px 0 color-mix(in srgb, var(--color-prev-turn) 10%, transparent);
-  }
-}
-
-/* HUD rhythm (height-aware via clamp; replaces breakpoint ladder) */
+/* Mahjong with Friends – warm, friendly light theme; dark aligns with codespace (Night Owl–style) */
 :root {
-  --game-hud-v-gap: clamp(0.25rem, 0.9vh, 0.9rem);
-  --game-hud-v-pad: clamp(0.25rem, 0.9vh, 0.9rem);
-}
-
-/* Compact HUD rhythm for short-height viewports (landscape/split view). */
-@media (max-height: 740px) {
-  :root {
-    --game-hud-v-gap: clamp(0.15rem, 0.7vh, 0.65rem);
-    --game-hud-v-pad: clamp(0.15rem, 0.7vh, 0.65rem);
-  }
+  --theme-transition: 0.2s ease;
+  --btn-nav-hover: rgba(0, 0, 0, 0.06);
+  --color-icon-fill: var(--color-text-primary);
 }
 
 .dark {
+  --btn-nav-hover: rgba(255, 255, 255, 0.08);
+  --color-icon-fill: var(--color-text-primary);
   --color-bg-primary: #011627;
   --color-bg-header: #011627;
   --color-surface: #011627;
@@ -177,11 +20,9 @@
   --color-surface-panel-muted: #132f4c;
   --color-primary: #2dd4bf;
   --color-primary-hover: #5eead4;
-  /** Accent used specifically for "your turn" highlights (seats/panel/recent). */
-  --color-your-turn: #22d3ee;
   --color-secondary: #134e4a;
   --color-text-primary: #d6deeb;
-  --color-text-muted: #7fa4bf;
+  --color-text-muted: #5f7e97;
   --color-border: #5f7e97;
   --color-ring-focus: #2dd4bf;
   --color-danger: #ef5350;
@@ -190,23 +31,19 @@
   --color-claim-kong: #818cf8;
   --color-claim-chow: #2dd4bf;
   --color-claim-mahjong: #fbbf24;
-  --color-prev-turn: #f472b6;
   --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2);
   color-scheme: dark;
 }
 
 @theme {
-  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-
   --color-bg-primary: #faf9f7;
   --color-bg-header: #f5f3f0;
   --color-surface: #faf9f7;
   --color-surface-panel: #f0ede8;
   --color-surface-panel-muted: #e8e5e0;
-  --color-primary: #0f766e;
-  --color-primary-hover: #115e59;
-  --color-your-turn: var(--color-primary);
+  --color-primary: #0d9488;
+  --color-primary-hover: #0f766e;
   --color-secondary: #ccfbf1;
   --color-text-primary: #374151;
   --color-text-muted: #6b7280;
@@ -218,123 +55,422 @@
   --color-claim-kong: #4f46e5;
   --color-claim-chow: #0d9488;
   --color-claim-mahjong: #d97706;
-  --color-prev-turn: #6d28d9;
-  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-panel: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 @layer base {
   html {
-    @apply min-h-screen scroll-smooth bg-bg-primary font-sans text-text-primary antialiased transition-colors duration-200;
+    @apply antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    transition: background-color var(--theme-transition), color var(--theme-transition);
   }
   body {
-    @apply min-h-screen transition-colors duration-200;
+    min-height: 100vh;
+    transition: background-color var(--theme-transition), color var(--theme-transition);
   }
   .icon-svg {
-    @apply size-full shrink-0 fill-current align-middle transition-colors duration-200;
+    width: 100%;
+    height: 100%;
+    fill: var(--color-icon-fill, currentColor);
+    transition: fill var(--theme-transition), stroke var(--theme-transition), color var(--theme-transition);
+    flex-shrink: 0;
+    vertical-align: middle;
   }
   .svg-stroke-icon {
-    @apply fill-none stroke-current;
+    fill: none;
+    stroke: currentColor;
   }
   button:not([aria-hidden]) {
-    @apply min-h-11 min-w-11 cursor-pointer;
+    min-height: 44px;
+    min-width: 44px;
+    cursor: pointer;
   }
   button:disabled {
-    @apply cursor-not-allowed;
+    cursor: not-allowed;
   }
   a[href] {
-    @apply cursor-pointer;
+    cursor: pointer;
   }
+  /* Focus ring only on keyboard focus to avoid visible ring on tap (mobile) */
   a:focus,
   button:focus,
   input:focus,
   select:focus,
   textarea:focus {
-    @apply outline-none;
+    outline: none;
   }
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring-focus;
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes tutorial-infobox-glow {
+  0%,
+  100% {
+    box-shadow:
+      var(--shadow-card),
+      0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      var(--shadow-card),
+      0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
+}
+
+@keyframes tutorial-slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-100% - 0.75rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tutorial-slide-out-to-top {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(-100% - 0.75rem));
+  }
+}
+
+@keyframes tutorial-slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(calc(100% + 0.75rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tutorial-slide-out-to-bottom {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(100% + 0.75rem));
+  }
+}
+
+@keyframes tutorial-slide-in-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-100% - 0.75rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tutorial-slide-out-to-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(-100% - 0.75rem));
+  }
+}
+
+@keyframes tutorial-slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 0.75rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tutorial-slide-out-to-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(100% + 0.75rem));
+  }
+}
+
+@keyframes tutorial-slide-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tutorial-slide-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes game-board-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
 @layer components {
-  .app-header {
-    @apply border-b border-border bg-bg-header shadow-panel transition-[background-color,border-color,box-shadow] duration-200;
+  .tutorial-slide-shell--in-top {
+    animation:
+      tutorial-slide-in-from-top 0.34s cubic-bezier(0.25, 0.85, 0.25, 1) both,
+      tutorial-infobox-glow 2.75s ease-in-out 0.38s infinite;
   }
-  .btn-nav-header {
-    @apply inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md bg-transparent text-text-primary outline-none transition-[background-color,color] duration-200;
+  .tutorial-slide-shell--out-top {
+    animation: tutorial-slide-out-to-top 0.28s cubic-bezier(0.4, 0, 1, 1) both;
   }
-  .btn-nav-header:hover {
-    @apply bg-black/[0.06] dark:bg-white/[0.08];
+  .tutorial-slide-shell--in-bottom {
+    animation:
+      tutorial-slide-in-from-bottom 0.34s cubic-bezier(0.25, 0.85, 0.25, 1) both,
+      tutorial-infobox-glow 2.75s ease-in-out 0.38s infinite;
   }
-  .btn-nav-header:focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring-focus;
+  .tutorial-slide-shell--out-bottom {
+    animation: tutorial-slide-out-to-bottom 0.28s cubic-bezier(0.4, 0, 1, 1) both;
   }
-  .panel {
-    @apply rounded-xl border border-border bg-surface-panel shadow-panel;
+  .tutorial-slide-shell--in-left {
+    animation:
+      tutorial-slide-in-from-left 0.34s cubic-bezier(0.25, 0.85, 0.25, 1) both,
+      tutorial-infobox-glow 2.75s ease-in-out 0.38s infinite;
   }
-  .btn-primary {
-    @apply min-h-11 cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-[0.9375rem] font-semibold text-white transition-[background-color,transform,filter] duration-150 ease-out md:min-h-[46px] md:px-5.5 md:py-2.75 md:text-base lg:min-h-[50px] lg:px-7 lg:py-3 lg:text-[1.0625rem] dark:text-bg-primary;
+  .tutorial-slide-shell--out-left {
+    animation: tutorial-slide-out-to-left 0.28s cubic-bezier(0.4, 0, 1, 1) both;
   }
-  .btn-primary:hover:not(:disabled) {
-    @apply bg-primary-hover;
+  .tutorial-slide-shell--in-right {
+    animation:
+      tutorial-slide-in-from-right 0.34s cubic-bezier(0.25, 0.85, 0.25, 1) both,
+      tutorial-infobox-glow 2.75s ease-in-out 0.38s infinite;
   }
-  .btn-primary:active:not(:disabled) {
-    @apply translate-y-px scale-[0.96] brightness-[0.93] transition-[transform,filter] duration-75 ease-out;
+  .tutorial-slide-shell--out-right {
+    animation: tutorial-slide-out-to-right 0.28s cubic-bezier(0.4, 0, 1, 1) both;
   }
-  .btn-primary:disabled {
-    @apply cursor-not-allowed opacity-60;
-  }
-  .btn-secondary {
-    @apply min-h-11 cursor-pointer rounded-xl border-2 border-primary bg-transparent px-5 py-2.5 text-[0.9375rem] font-semibold text-primary transition-[background-color,color,transform,filter] duration-150 ease-out md:min-h-[46px] md:px-5.5 md:py-2.75 md:text-base lg:min-h-[50px] lg:px-7 lg:py-3 lg:text-[1.0625rem];
-  }
-  .btn-secondary:hover:not(:disabled) {
-    @apply bg-secondary text-primary-hover;
-  }
-  .btn-secondary:active:not(:disabled) {
-    @apply translate-y-px scale-[0.96] brightness-[0.96] transition-[transform,filter] duration-75 ease-out;
-  }
-  .btn-secondary:disabled {
-    @apply cursor-not-allowed border-border text-text-muted opacity-50;
-  }
-  .text-on-surface {
-    @apply text-text-primary;
-  }
-  .text-muted {
-    @apply text-text-muted;
-  }
-  .brand-title {
-    @apply font-bold tracking-tight text-text-primary;
-  }
-  .btn-claim-pong {
-    @apply bg-claim-pong hover:not-disabled:brightness-[0.92];
-  }
-  .btn-claim-kong {
-    @apply bg-claim-kong hover:not-disabled:brightness-[0.92];
-  }
-  .btn-claim-chow {
-    @apply bg-claim-chow hover:not-disabled:brightness-[0.92];
-  }
-  .btn-claim-mahjong {
-    @apply bg-claim-mahjong hover:not-disabled:brightness-[0.92];
+  .game-board-notice-enter {
+    animation: game-board-notice-enter 0.22s ease-out both;
   }
   @media (prefers-reduced-motion: reduce) {
-    .btn-primary:active:not(:disabled),
-    .btn-secondary:active:not(:disabled) {
-      @apply translate-y-0 scale-100 brightness-100;
+    .tutorial-slide-shell--in-top,
+    .tutorial-slide-shell--in-bottom,
+    .tutorial-slide-shell--in-left,
+    .tutorial-slide-shell--in-right {
+      animation: tutorial-slide-fade-in 0.2s ease both;
+    }
+    .tutorial-slide-shell--out-top,
+    .tutorial-slide-shell--out-bottom,
+    .tutorial-slide-shell--out-left,
+    .tutorial-slide-shell--out-right {
+      animation: tutorial-slide-fade-out 0.2s ease both;
+    }
+    .game-board-notice-enter {
+      animation: none;
     }
   }
+  .app-header {
+    background-color: var(--color-bg-header);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow-panel);
+    transition: background-color var(--theme-transition), border-color var(--theme-transition), box-shadow var(--theme-transition);
+  }
+  .btn-nav-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: var(--color-text-primary);
+    transition: background-color var(--theme-transition), color var(--theme-transition);
+    cursor: pointer;
+    outline: none;
+  }
+  .btn-nav-header:hover {
+    background-color: var(--btn-nav-hover);
+  }
+  .btn-nav-header:focus {
+    outline: none;
+  }
+  .btn-nav-header:focus-visible {
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
+  }
+  .panel {
+    background-color: var(--color-surface-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-panel);
+  }
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  @media (min-width: 768px) {
+    .btn-primary {
+      padding: 0.6875rem 1.375rem;
+      font-size: 1rem;
+      min-height: 46px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .btn-primary {
+      padding: 0.75rem 1.75rem;
+      font-size: 1.0625rem;
+      min-height: 50px;
+    }
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background-color: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  @media (min-width: 768px) {
+    .btn-secondary {
+      padding: 0.6875rem 1.375rem;
+      font-size: 1rem;
+      min-height: 46px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .btn-secondary {
+      padding: 0.75rem 1.75rem;
+      font-size: 1.0625rem;
+      min-height: 50px;
+    }
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-secondary);
+    color: var(--color-primary-hover);
+  }
+  .btn-secondary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+  }
+  .text-on-surface {
+    color: var(--color-text-primary);
+  }
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+  .brand-title {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+  .btn-claim-pong {
+    background-color: var(--color-claim-pong);
+  }
+  .btn-claim-pong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-kong {
+    background-color: var(--color-claim-kong);
+  }
+  .btn-claim-kong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-chow {
+    background-color: var(--color-claim-chow);
+  }
+  .btn-claim-chow:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .btn-claim-mahjong {
+    background-color: var(--color-claim-mahjong);
+  }
+  .btn-claim-mahjong:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .skip-link {
-    @apply absolute left-0 top-0 z-[100] -translate-y-full rounded-br-md bg-primary px-4 py-3 font-semibold text-white no-underline transition-transform duration-150 ease-out;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.75rem 1rem;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 0.375rem 0;
+    transform: translateY(-100%);
+    transition: transform 0.15s ease;
   }
   .skip-link:focus {
-    @apply outline-none;
+    outline: none;
   }
   .skip-link:focus-visible {
-    @apply translate-y-0 outline-2 outline-offset-2 outline-ring-focus;
+    transform: translateY(0);
+    outline: 2px solid var(--color-ring-focus);
+    outline-offset: 2px;
   }
 }

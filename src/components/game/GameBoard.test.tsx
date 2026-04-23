@@ -7,8 +7,6 @@ import type { Game, Tile, PlayerMeld } from '../../types';
 const baseTile: Tile = { _type: 'dot', value: 2, count: 4 };
 
 function makeGame(overrides?: Partial<Game>): Game {
-  const { private: privateOverride, ...rest } = overrides ?? {};
-  const defaultLegalP1 = [{ kind: 'discard' as const, tileGroups: [baseTile] }];
   return {
     _id: 'g1',
     lobby_id: 'l1',
@@ -36,14 +34,9 @@ function makeGame(overrides?: Partial<Game>): Game {
       tilesDealt: true,
     },
     private: {
-      legalActions: {
-        p1: privateOverride?.legalActions?.p1 !== undefined ? privateOverride.legalActions.p1 : defaultLegalP1,
-        p2: privateOverride?.legalActions?.p2 !== undefined ? privateOverride.legalActions.p2 : [],
-        p3: privateOverride?.legalActions?.p3 !== undefined ? privateOverride.legalActions.p3 : [],
-        p4: privateOverride?.legalActions?.p4 !== undefined ? privateOverride.legalActions.p4 : [],
-      },
+      potentialActions: { p1: [] },
     },
-    ...rest,
+    ...overrides,
   };
 }
 
@@ -115,7 +108,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
         p4: [],
       },
     });
-    const { container } = render(
+    render(
       <GameBoard
         game={game}
         currentUserId="p1"
@@ -136,25 +129,14 @@ describe('GameBoard playerMelds and concealed actions', () => {
       />
     );
 
-    // Decorative `<img alt="">` backs are excluded from `getByRole('img')` in Testing Library.
-    expect(container.querySelectorAll('img[src*="tiles/back.svg"]').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByRole('img', { hidden: true }).length).toBeGreaterThanOrEqual(3);
   });
 
   it('shows concealed buttons only from concealed action flags', () => {
-    const c1: Tile = { _type: 'character', value: 1, count: 4 };
-    const c2: Tile = { _type: 'character', value: 2, count: 4 };
-    const c3: Tile = { _type: 'character', value: 3, count: 4 };
     const game = makeGame({
       private: {
-        legalActions: {
-          p1: [
-            { kind: 'declareConcealedPong', tiles: [baseTile, baseTile, baseTile] },
-            { kind: 'declareConcealedChow', tiles: [c1, c2, c3] },
-            { kind: 'declareConcealedKong', tile: baseTile },
-          ],
-          p2: [],
-          p3: [],
-          p4: [],
+        potentialActions: {
+          p1: ['concealedPong', 'concealedChow', 'concealedKong'],
         },
       },
     });
@@ -179,9 +161,9 @@ describe('GameBoard playerMelds and concealed actions', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Pong' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chow' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /gang|full set|fullset/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Concealed Pong' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Concealed Chow' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /concealed gang/i })).toBeInTheDocument();
   });
 
   it('supports constrained concealed pong tile selection', async () => {
@@ -200,21 +182,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
         p4: [],
       },
       private: {
-        legalActions: {
-          p1: [
-            {
-              kind: 'declareConcealedPong',
-              tiles: [
-                { _type: 'dot', value: 5, count: 4 },
-                { _type: 'dot', value: 5, count: 4 },
-                { _type: 'dot', value: 5, count: 4 },
-              ],
-            },
-          ],
-          p2: [],
-          p3: [],
-          p4: [],
-        },
+        potentialActions: { p1: ['concealedPong'] },
       },
     });
     render(
@@ -238,15 +206,15 @@ describe('GameBoard playerMelds and concealed actions', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Pong' }));
+    await user.click(screen.getByRole('button', { name: 'Concealed Pong' }));
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Select Dot 5 for meld' }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' }).length).toBeGreaterThan(0);
     });
-    const dot5Buttons = screen.getAllByRole('button', { name: 'Select Dot 5 for meld' });
+    const dot5Buttons = screen.getAllByRole('button', { name: 'Select Dot 5 for concealed meld' });
     await user.click(dot5Buttons[0]!);
     await user.click(dot5Buttons[1]!);
     await user.click(dot5Buttons[2]!);
-    await user.click(screen.getByRole('button', { name: 'Claim pong' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm concealed pong' }));
 
     await waitFor(() => {
       expect(onConcealedPong).toHaveBeenCalledTimes(1);
@@ -274,6 +242,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
       },
       playerHands: { p1: [baseTile], p2: [c3, c4, c5, c6], p3: [], p4: [] },
       private: {
+        potentialActions: { p1: [], p2: ['chow'], p3: [], p4: [] },
         legalActions: {
           p1: [],
           p2: [
@@ -324,12 +293,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
     const game = makeGame({
       playerMelds: { p1: [], p2: [], p3: [], p4: [] },
       private: {
-        legalActions: {
-          p1: [{ kind: 'declareMahjong' }],
-          p2: [],
-          p3: [],
-          p4: [],
-        },
+        potentialActions: { p1: ['mahjong'] },
       },
     });
 
@@ -363,17 +327,12 @@ describe('GameBoard playerMelds and concealed actions', () => {
     const user = userEvent.setup();
     const onMahjong = vi.fn();
 
-    const melds = [1, 2, 3, 4].map((n) => makeMeld({ meldId: `m${n}` }));
+    const melds = [makeMeld(), makeMeld(), makeMeld(), makeMeld()];
 
     const game = makeGame({
       playerMelds: { p1: melds, p2: [], p3: [], p4: [] },
       private: {
-        legalActions: {
-          p1: [{ kind: 'declareMahjong' }],
-          p2: [],
-          p3: [],
-          p4: [],
-        },
+        potentialActions: { p1: ['mahjong'] },
       },
     });
 
@@ -424,12 +383,7 @@ describe('GameBoard playerMelds and concealed actions', () => {
       playerHands: { p1: orphanHand, p2: [], p3: [], p4: [] },
       playerMelds: { p1: [], p2: [], p3: [], p4: [] },
       private: {
-        legalActions: {
-          p1: [{ kind: 'declareMahjong' }],
-          p2: [],
-          p3: [],
-          p4: [],
-        },
+        potentialActions: { p1: ['mahjong'] },
       },
     });
 
