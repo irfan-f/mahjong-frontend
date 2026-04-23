@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, Link, useNavigate, NavLink } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   getGame,
@@ -45,8 +45,28 @@ export function Game() {
   const actingRef = useRef(false);
   const gameIdRef = useRef(gameId);
   gameIdRef.current = gameId;
+  const changeSigRef = useRef<string | null>(null);
+  const lastChangeAtRef = useRef<number>(Date.now());
+  const [stuckForMs, setStuckForMs] = useState(0);
 
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  const computeChangeSig = (g: GameType): string => {
+    const lastDiscard = g.lastDiscardedTile ? `${g.lastDiscardedTile._type}:${String(g.lastDiscardedTile.value)}` : 'none';
+    const lastHist = g.discardHistory?.length ? g.discardHistory[g.discardHistory.length - 1] : null;
+    const lastHistKey = lastHist ? `${lastHist.playerId}:${lastHist.tile._type}:${String(lastHist.tile.value)}` : 'none';
+    return [
+      g.status ?? 'active',
+      g.currentPlayer ?? 'none',
+      String(g.turnState?.turn_number ?? ''),
+      String(g.turnState?.tileDrawn ?? ''),
+      String(g.turnState?.tileDiscarded ?? ''),
+      lastDiscard,
+      lastHistKey,
+      String(g.claimWindowEndsAt ?? ''),
+      String(g.winnerId ?? ''),
+    ].join('|');
+  };
 
   /** Fetch the latest game state and commit it if still the freshest request. */
   const refreshGameState = useCallback(
@@ -75,10 +95,23 @@ export function Game() {
       }
 
       setGame(data);
+      const sig = computeChangeSig(data);
+      if (sig !== changeSigRef.current) {
+        changeSigRef.current = sig;
+        lastChangeAtRef.current = Date.now();
+        setStuckForMs(0);
+      }
       if (options?.finishLoading) setLoading(false);
     },
     [gameId, getIdToken]
   );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStuckForMs(Date.now() - lastChangeAtRef.current);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   /**
    * After a user mutation, drive bot turns one-at-a-time so each action is visible.
@@ -116,6 +149,19 @@ export function Game() {
   const driveBotStepsRef = useRef(driveBotSteps);
   driveBotStepsRef.current = driveBotSteps;
 
+  const handleNudgeBots = useCallback(async () => {
+    if (!gameId) return;
+    setError(null);
+    try {
+      const token = await getIdToken(true);
+      if (!token) return;
+      await stepBot(gameId, token);
+      await refreshGameState();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to nudge bots');
+    }
+  }, [gameId, getIdToken, refreshGameState]);
+
   useEffect(() => {
     if (!gameId) return;
     setLoading(true);
@@ -143,7 +189,9 @@ export function Game() {
       try {
         const data = await getLobby(lobbyId, token);
         if (data) setLobby(data);
-      } catch {}
+      } catch {
+        // Lobby polling is best-effort; ignore transient failures.
+      }
     };
     void poll();
     const interval = setInterval(poll, 2000);
@@ -434,29 +482,53 @@ export function Game() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 text-muted" role="status" aria-live="polite" aria-busy="true">
-        <Spinner className="w-8 h-8" />
-        <p>Loading game…</p>
+      <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 p-6 text-muted"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Spinner className="w-8 h-8" />
+          <p>Loading game…</p>
+        </main>
       </div>
     );
   }
   if (error && !game) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 p-6">
-        <p className="text-danger text-center">{error}</p>
-        <Link to="/" className="btn-primary">
-          Back to home
-        </Link>
+      <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6 p-6"
+        >
+          <p className="text-danger text-center">{error}</p>
+          <Link to="/" className="btn-primary">
+            Back to home
+          </Link>
+        </main>
       </div>
     );
   }
   if (!game) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 p-6">
-        <p className="text-muted text-center">Game not found</p>
-        <Link to="/" className="btn-primary">
-          Back to home
-        </Link>
+      <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6 p-6"
+        >
+          <p className="text-muted text-center">Game not found</p>
+          <Link to="/" className="btn-primary">
+            Back to home
+          </Link>
+        </main>
       </div>
     );
   }
@@ -478,7 +550,7 @@ export function Game() {
     );
 
   return (
-    <div className="h-screen flex flex-col bg-(--color-surface)">
+    <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
       <PlaySessionHeader
         theme={theme}
         setTheme={setTheme}
@@ -499,42 +571,9 @@ export function Game() {
           </Link>
         }
         desktopActions={
-          <>
-            {gameId ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/what-if/${gameId}`)}
-                className="btn-secondary shrink-0 py-1.5 px-2.5 text-sm"
-                aria-label="Open What-if scorer"
-                title="Open What-if scorer"
-              >
-                What-if
-              </button>
-            ) : null}
-            {isEnded ? (
-              <span className="shrink-0 text-sm font-semibold text-(--color-primary)">Game over</span>
-            ) : null}
-          </>
-        }
-        mobileDrawerExtras={
-          gameId
-            ? (close) => (
-                <NavLink
-                  to={`/what-if/${gameId}`}
-                  onClick={close}
-                  className={({ isActive }) =>
-                    [
-                      'flex min-h-12 w-full items-center rounded-lg px-4 py-3 text-left text-base font-semibold transition-colors',
-                      isActive
-                        ? 'bg-secondary text-(--color-primary)'
-                        : 'text-on-surface hover:bg-surface-panel-muted',
-                    ].join(' ')
-                  }
-                >
-                  What-if (this game)
-                </NavLink>
-              )
-            : undefined
+          isEnded ? (
+            <span className="shrink-0 text-sm font-semibold text-(--color-primary)">Game over</span>
+          ) : null
         }
       />
 
@@ -548,6 +587,13 @@ export function Game() {
           acting={acting}
           waitingOnBot={waitingOnBot}
           botStepCapMessage={botStepCapMessage}
+          onNudgeBots={handleNudgeBots}
+          showNudgeBots={
+            !acting
+            && !isEnded
+            && (game.private?.legalActions?.[user?.uid ?? '']?.length ?? 0) === 0
+            && stuckForMs >= 8000
+          }
           onRollAndDeal={handleRollAndDeal}
           onDraw={handleDraw}
           onDiscardTile={handleDiscard}
@@ -562,7 +608,6 @@ export function Game() {
           onStartNewGame={game.status === 'ended' ? handleStartNewGame : undefined}
           startingNewGame={startingNewGame}
           lobby={lobby}
-          mode="standard"
           onShowHandChange={async (showHand) => {
             if (!gameId) return;
             const token = await getIdToken(true);
