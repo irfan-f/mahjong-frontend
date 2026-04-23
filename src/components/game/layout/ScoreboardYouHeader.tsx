@@ -146,7 +146,7 @@ export function ScoreboardYouHudActionBar({
       {canConcealedChow ? (
         <>
           <HudActionButton
-            variant="soft"
+            variant="secondary"
             onClick={onToggleConcealedChow}
             disabled={acting}
             className={
@@ -176,7 +176,7 @@ export function ScoreboardYouHudActionBar({
       {canConcealedPong ? (
         <>
           <HudActionButton
-            variant="soft"
+            variant="secondary"
             onClick={onToggleConcealedPong}
             disabled={acting}
             className={
@@ -205,7 +205,7 @@ export function ScoreboardYouHudActionBar({
       ) : null}
       {canConcealedKong ? (
         <HudActionButton
-          variant="soft"
+          variant="secondary"
           onClick={onToggleConcealedKong}
           disabled={acting}
           className={
@@ -225,25 +225,27 @@ export function ScoreboardYouHudActionBar({
           variant="primary"
           onClick={onDraw}
           disabled={acting}
+          loading={acting && mobileDrawCta}
+          loadingContent={<Spinner className="size-3.5" aria-hidden />}
           aria-label={acting && mobileDrawCta ? 'Drawing' : 'Draw a tile'}
           title={mobileDrawCta ? 'Draw from wall' : undefined}
         >
-          {acting && mobileDrawCta ? <Spinner className="size-3.5" /> : null}
           Draw
         </HudActionButton>
       ) : null}
       {mobileDiscardCta ? (
         <HudActionButton
-          variant="softDanger"
+          variant="secondary"
           disabled={acting || selectedDiscardTile == null}
           onClick={onDiscardSelected}
           className="border-(--color-danger) bg-(--color-danger)/10 text-(--color-danger)"
+          loading={acting && mobileDiscardCta && selectedDiscardTile != null}
+          loadingContent={<Spinner className="size-3.5" aria-hidden />}
           aria-label={
             selectedDiscardTile == null ? 'Select a tile to discard' : `Discard ${tileToLabel(selectedDiscardTile)}`
           }
           title="Discard selected tile"
         >
-          {acting && mobileDiscardCta && selectedDiscardTile ? <Spinner className="size-3.5" /> : null}
           Discard
         </HudActionButton>
       ) : null}

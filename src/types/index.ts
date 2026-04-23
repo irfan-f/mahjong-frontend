@@ -88,6 +88,11 @@ export interface Game {
   lastDiscarderId?: string | null;
   /** Chronological discards that remain after claims (each entry is the true actor). */
   discardHistory?: { playerId: string; tile: Tile }[];
+  /**
+   * Public, bounded action feed for UI (newest last). Draw events never reveal the tile.
+   * Discards remain even if later claimed.
+   */
+  actionHistory?: ActionEvent[];
   ruleSetId?: 'default-v1' | 'ma-jiang';
   tilesLeft: number;
   /** Sum of two dice from roll & deal; drives wall break visualization. Omit → UI defaults (e.g. 7). */
@@ -117,6 +122,11 @@ export interface Game {
     legalActions?: Record<string, LegalAction[]>;
   };
 }
+
+export type ActionEvent =
+  | { kind: 'discard'; actorId: string; tile: Tile; atTurn: number }
+  | { kind: 'claim'; actorId: string; fromId: string; meldType: MeldType; claimedTile: Tile; atTurn: number }
+  | { kind: 'draw'; actorId: string; atTurn: number };
 
 /** Mirrors mahjong-backend `domain/legal-actions` discriminated union. */
 export type LegalAction =

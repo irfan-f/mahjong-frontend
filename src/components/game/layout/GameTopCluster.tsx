@@ -24,8 +24,8 @@ export function GameTopCluster({
 
   return (
     <section
-      className="grid grid-cols-2 gap-[var(--game-hud-v-gap)]"
-      aria-label="Opponents and recent actions"
+    className="grid grid-cols-2 auto-rows-[clamp(9rem,22vh,12.5rem)] gap-[var(--game-hud-v-gap)]"
+    aria-label="Opponents and recent actions"
     >
       <OpponentHudCard
         pid={p1}

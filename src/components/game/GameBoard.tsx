@@ -696,9 +696,10 @@ export function GameBoard({
               variant="primary"
               onClick={onRollAndDeal}
               disabled={acting}
+              loading={acting}
+              loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
               aria-label={acting ? 'Rolling and dealing' : 'Roll and deal tiles'}
             >
-              {acting && <Spinner className="w-4 h-4" />}
               Roll & deal
             </HudActionButton>
           )}
@@ -708,10 +709,11 @@ export function GameBoard({
                 variant="primary"
                 onClick={onMahjong}
                 disabled={acting}
+                loading={acting}
+                loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
                 className="btn-claim-mahjong"
                 aria-label={acting ? 'Declaring Mahjong' : 'Declare Mahjong'}
               >
-                {acting && <Spinner className="w-4 h-4" />}
                 Mahjong
               </HudActionButton>
             ) : (
@@ -719,11 +721,12 @@ export function GameBoard({
                 variant="primary"
                 onClick={() => setWinMeldModalOpen(true)}
                 disabled={acting}
+                loading={acting}
+                loadingContent={<Spinner className="w-4 h-4" aria-hidden />}
                 className="btn-claim-mahjong"
                 aria-label={acting ? 'Opening meld declaration' : 'Define melds before Mahjong'}
                 title={`Declare ${remainingMeldsNeeded} more meld(s)`}
               >
-                {acting && <Spinner className="w-4 h-4" />}
                 Define melds to win
               </HudActionButton>
             )

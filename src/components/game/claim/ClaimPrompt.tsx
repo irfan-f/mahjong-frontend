@@ -146,12 +146,18 @@ export function ClaimPrompt({
       <div className="mt-3 flex flex-col gap-2">
         {canClaimPong && (!showGroupSelector || selectedClaimGroup === 'pong' || selectedClaimGroup == null) ? (
           <HudActionButton onClick={onClaimPong} disabled={acting} aria-label="Claim pong">
-            Claim Pong
+            <span className="inline-flex items-center justify-center gap-2">
+              <span>Claim Pong</span>
+              {lastDiscardedTile ? <TileView tile={lastDiscardedTile} className="h-8 w-6 shadow-none" /> : null}
+            </span>
           </HudActionButton>
         ) : null}
         {canClaimKong && (!showGroupSelector || selectedClaimGroup === 'kong' || selectedClaimGroup == null) ? (
           <HudActionButton onClick={onClaimKong} disabled={acting} aria-label={`Claim kong (${kongSetLabel})`}>
-            Claim Kong
+            <span className="inline-flex items-center justify-center gap-2">
+              <span>Claim {kongSetLabel}</span>
+              {lastDiscardedTile ? <TileView tile={lastDiscardedTile} className="h-8 w-6 shadow-none" /> : null}
+            </span>
           </HudActionButton>
         ) : null}
         {canClaimChow &&
@@ -170,7 +176,14 @@ export function ClaimPrompt({
                 disabled={acting}
                 aria-label={o.label}
               >
-                {o.label}
+                <span className="flex w-full items-center justify-between gap-3">
+                  <span className="shrink-0 font-black">Chow</span>
+                  <span className="flex shrink-0 items-center gap-1" aria-hidden>
+                    {o.meld.map((t, i) => (
+                      <TileView key={`${o.variantId}-${i}`} tile={t} className="h-8 w-6 shadow-none" />
+                    ))}
+                  </span>
+                </span>
               </HudActionButton>
             ))}
             {selectedChowVariantId ? (

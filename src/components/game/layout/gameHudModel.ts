@@ -1,4 +1,4 @@
-import type { Game, MeldType, PlayerMeld, Tile, WindTileValue } from '../../../types';
+import type { ActionEvent, Game, MeldType, PlayerMeld, Tile, WindTileValue } from '../../../types';
 
 export type SeatLetter = 'E' | 'S' | 'W' | 'N';
 
@@ -150,6 +150,7 @@ export function previousActorId(game: Game): string | null {
 
 export type RecentAction =
   | { kind: 'discard'; actorId: string; actorWind?: WindTileValue; tile: Tile }
+  | { kind: 'draw'; actorId: string; actorWind?: WindTileValue }
   | {
       kind: 'claim';
       actorId: string;
@@ -159,6 +160,52 @@ export type RecentAction =
       meldType: MeldType;
       claimedTile?: Tile | null;
     };
+
+export function buildRecentActionsFromActionHistory(
+  actionHistory: ActionEvent[] | undefined,
+  windByPlayer: Record<string, WindTileValue>,
+): RecentAction[] {
+  if (!actionHistory || actionHistory.length === 0) return [];
+
+  const timed = actionHistory.map((ev, i) => {
+    if (ev.kind === 'discard') {
+      return {
+        sortKey: i,
+        action: {
+          kind: 'discard' as const,
+          actorId: ev.actorId,
+          actorWind: windByPlayer[ev.actorId],
+          tile: ev.tile,
+        },
+      };
+    }
+    if (ev.kind === 'draw') {
+      return {
+        sortKey: i,
+        action: {
+          kind: 'draw' as const,
+          actorId: ev.actorId,
+          actorWind: windByPlayer[ev.actorId],
+        },
+      };
+    }
+    return {
+      sortKey: i,
+      action: {
+        kind: 'claim' as const,
+        actorId: ev.actorId,
+        actorWind: windByPlayer[ev.actorId],
+        fromId: ev.fromId,
+        fromWind: windByPlayer[ev.fromId],
+        meldType: ev.meldType,
+        claimedTile: ev.claimedTile,
+      },
+    };
+  });
+
+  timed.sort((a, b) => b.sortKey - a.sortKey);
+  return timed.map((t) => t.action);
+}
 
 export function buildRecentActions(game: Game, windByPlayer: Record<string, WindTileValue>): RecentAction[] {
   if (isPreDealPhase(game)) {
