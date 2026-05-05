@@ -1,60 +1,66 @@
-# Mahjong Frontend
+# Mahjong with Friends (frontend)
 
-Web client for **Hong Kong (Cantonese) Mahjong**. React 18, Vite, Tailwind 4, Firebase Auth. Connects to [mahjong-backend](../mahjong-backend) for lobbies and game state.
+Web client for **Hong Kong (Cantonese) Mahjong**. **React 18**, **Vite**, **Tailwind 4**, **Firebase Auth**. Talks to **[mahjong-backend](../mahjong-backend)** for lobbies, seats, and game state.
+
+**Live:** [irfan-f.github.io/mahjong-frontend](https://irfan-f.github.io/mahjong-frontend/)  
+**API (production):** [irfquake.tech](https://irfquake.tech) (see backend README)
 
 ## Docs
 
-- **API** — Backend OpenAPI spec and run instructions: see the [mahjong-backend](../mahjong-backend) README and [openapi.yaml](../mahjong-backend/openapi.yaml).
+- **HTTP API** — [mahjong-backend](../mahjong-backend) README and [openapi.yaml](../mahjong-backend/openapi.yaml).
 
 ## Run locally
 
 ```bash
 npm install
 cp .env.example .env
-# Fill in Firebase config and VITE_API_URL (e.g. http://localhost:3000)
+# Set Firebase web config and VITE_API_URL (e.g. http://localhost:3000)
 npm run dev
 ```
 
-App runs at `http://localhost:3001`. Ensure the backend is running and `VITE_API_URL` points to it.
+The dev server defaults to **port 3001** (`vite.config.ts`). Run the backend on **3000** (or set `VITE_API_URL` to match).
 
 ## Environment variables
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Backend base URL (e.g. `http://localhost:3000`) |
+| `VITE_API_URL` | Backend base URL (e.g. `http://localhost:3000`, or `https://irfquake.tech`) |
 | `VITE_FIREBASE_API_KEY` | Firebase Web API key |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Firebase Auth domain |
 | `VITE_FIREBASE_PROJECT_ID` | Firebase project ID |
 | `VITE_FIREBASE_APP_ID` | Firebase app ID |
 
-See `.env.example`. Do not commit `.env`.
+Use `.env.example` as a template. Do not commit `.env`.
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | TypeScript check + Vite build to `dist/` |
+| `npm run dev` | Vite dev server |
+| `npm run build` | TypeScript check + Vite build → `dist/` |
 | `npm run preview` | Serve `dist/` locally |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run tests in watch mode |
-| `npm run test:run` | Run tests once |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest watch |
+| `npm run test:run` | Vitest once |
 
 ## Routes
 
-- `/` — Home (sign in / create or join lobby)
-- `/lobby/:id` — Lobby room (join, start game when 4 players)
-- `/game/:gameId` — Game table (draw, discard, declare Mahjong)
+- `/` — Home (sign in; create or join lobby)  
+- `/lobby/:id` — Lobby (ready up; start when four players)  
+- `/game/:gameId` — Table (draw, discard, declare Mahjong)  
 
 ## Stack
 
-- React 18, React Router 6
-- Vite 6, TypeScript
-- Tailwind CSS 4
-- Firebase Auth (sign-in; ID token sent to backend as Bearer)
+- React 18, React Router 6  
+- Vite 6, TypeScript  
+- Tailwind CSS 4  
+- Firebase Auth (ID token as `Authorization: Bearer` on API calls)
 
-## Deployment notes (GitHub Pages)
+## GitHub Pages
 
-- This app uses `HashRouter` for GitHub Pages compatibility.
-- Vite `base` is set to `/mahjong-frontend/` in production builds (see `vite.config.ts`), so it should be deployed under that path.
+- **`HashRouter`** so deep links work on static hosting.  
+- Production **`base`** is `/mahjong-frontend/` (see `vite.config.ts`); deploy under that path (e.g. user/org GitHub Pages project site).
 
+## Firebase Auth
+
+Add your GitHub Pages origin (e.g. `https://irfan-f.github.io`) under Firebase **Authentication → Settings → Authorized domains** so OAuth and email link flows work in production.
