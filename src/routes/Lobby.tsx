@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { getLobby, createGame, deleteLobby, addBotToLobbySeat, removeBotFromLobbySeat, renameBotInLobbySeat, userSetup } from '../api/endpoints';
 import type { Lobby as LobbyType } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { PageMeta } from '../components/PageMeta';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
@@ -28,6 +29,19 @@ export function Lobby() {
   const [renamingBotSeat, setRenamingBotSeat] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pageMeta = (
+    <PageMeta
+      title={id ? `Lobby ${id}` : 'Lobby'}
+      description={
+        id
+          ? `Join lobby ${id} on Mahjong with Friends. Share the code so friends can fill four seats and start a game.`
+          : undefined
+      }
+      path={id ? `/lobby/${id}` : '/'}
+      noIndex
+    />
+  );
 
   const handleCopyCode = () => {
     if (!id) return;
@@ -210,6 +224,8 @@ export function Lobby() {
 
   if (loading) {
     return (
+      <>
+        {pageMeta}
       <div className="h-screen flex flex-col bg-(--color-surface)">
         <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Lobby" />
         <main
@@ -224,10 +240,13 @@ export function Lobby() {
           <p>Loading lobby…</p>
         </main>
       </div>
+      </>
     );
   }
   if (error || !lobby) {
     return (
+      <>
+        {pageMeta}
       <div className="h-screen flex flex-col bg-(--color-surface)">
         <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Lobby" />
         <main
@@ -241,6 +260,7 @@ export function Lobby() {
           </Link>
         </main>
       </div>
+      </>
     );
   }
 
@@ -252,6 +272,8 @@ export function Lobby() {
   const canManageBots = isHost && !lobby.currentGameId && seatBasedLobby;
 
   return (
+    <>
+      {pageMeta}
     <div className="h-screen flex flex-col bg-(--color-surface)">
       <PlaySessionHeader
         theme={theme}
@@ -436,5 +458,6 @@ export function Lobby() {
         </div>
       </main>
     </div>
+    </>
   );
 }

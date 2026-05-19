@@ -22,6 +22,7 @@ import {
 import { DEFAULT_RULESET_ID } from '../terminology/rulesetTerminology';
 import type { Game as GameType, Lobby as LobbyType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { PageMeta } from '../components/PageMeta';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
 import { GameBoard } from '../components/game/GameBoard';
 import { Spinner } from '../components/Spinner';
@@ -49,6 +50,15 @@ export function Game() {
   const changeSigRef = useRef<string | null>(null);
   const lastChangeAtRef = useRef<number>(Date.now());
   const [stuckForMs, setStuckForMs] = useState(0);
+
+  const pageMeta = (
+    <PageMeta
+      title="Game"
+      description="Mahjong game in progress on Mahjong with Friends."
+      path={gameId ? `/game/${gameId}` : '/game'}
+      noIndex
+    />
+  );
 
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -491,6 +501,8 @@ export function Game() {
 
   if (loading) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
         <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
@@ -505,10 +517,13 @@ export function Game() {
           <p>Loading game…</p>
         </main>
       </div>
+      </>
     );
   }
   if (error && !game) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
         <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
@@ -522,10 +537,13 @@ export function Game() {
           </Link>
         </main>
       </div>
+      </>
     );
   }
   if (!game) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
         <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
@@ -539,6 +557,7 @@ export function Game() {
           </Link>
         </main>
       </div>
+      </>
     );
   }
 
@@ -559,6 +578,8 @@ export function Game() {
     );
 
   return (
+    <>
+      {pageMeta}
     <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
       <PlaySessionHeader
         theme={theme}
@@ -628,5 +649,6 @@ export function Game() {
         />
       </main>
     </div>
+    </>
   );
 }

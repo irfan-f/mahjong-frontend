@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
+import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Game } from './Game';
 
@@ -99,14 +100,16 @@ describe('Game route concealed action wiring', () => {
 
   it('calls concealed endpoint methods from GameBoard handlers', async () => {
     render(
-      <MemoryRouter
-        initialEntries={['/game/g1']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <Routes>
-          <Route path="/game/:gameId" element={<Game />} />
-        </Routes>
-      </MemoryRouter>
+      <HelmetProvider>
+        <MemoryRouter
+          initialEntries={['/game/g1']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/game/:gameId" element={<Game />} />
+          </Routes>
+        </MemoryRouter>
+      </HelmetProvider>
     );
 
     await waitFor(() => {

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Mahjong with Friends - play Mahjong online with friends">
+  <defs>
+    <filter id="ts" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0a0a0a" flood-opacity="0.13"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="#fdfcf8"/>
+  <rect width="1200" height="7" fill="#179b6a"/>
+  <circle cx="100" cy="120" r="150" fill="#179b6a" opacity="0.04"/>
+  <circle cx="1100" cy="120" r="150" fill="#179b6a" opacity="0.04"/>
+
+  <text x="600" y="158" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="88" font-weight="800" fill="#0a0a0a">Mahjong</text>
+  <text x="600" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="700" fill="#179b6a">with Friends</text>
+  <text x="600" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#71717a">Singleplayer &#183; Multiplayer &#183; In Development</text>
+  <text x="600" y="330" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#179b6a">mahjong.irfan-f.com</text>
+
+  <line x1="160" y1="356" x2="1040" y2="356" stroke="#d1fae5" stroke-width="1.5"/>
+
+  <g filter="url(#ts)">
+    <g transform="translate(219, 374)">
+      <image href="tiles/back.svg" width="130" height="173"/>
+      <image href="tiles/bamboo_1.svg" x="10" y="13" width="110" height="147"/>
+    </g>
+    <g transform="translate(377, 374)">
+      <image href="tiles/back.svg" width="130" height="173"/>
+      <image href="tiles/dots_5.svg" x="10" y="13" width="110" height="147"/>
+    </g>
+    <g transform="translate(535, 374)">
+      <image href="tiles/back.svg" width="130" height="173"/>
+      <image href="tiles/dragon_green.svg" x="10" y="13" width="110" height="147"/>
+    </g>
+    <g transform="translate(693, 374)">
+      <image href="tiles/back.svg" width="130" height="173"/>
+      <image href="tiles/dragon_red.svg" x="10" y="13" width="110" height="147"/>
+    </g>
+    <g transform="translate(851, 374)">
+      <image href="tiles/back.svg" width="130" height="173"/>
+      <image href="tiles/dragon_white.svg" x="10" y="13" width="110" height="147"/>
+    </g>
+  </g>
+</svg>
