@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AccountMenu } from './AccountMenu';
 import { ThemeToggle } from './ThemeToggle';
-import { AppNav } from './AppNav';
 import { AccountDrawerCard } from './AccountDrawerCard';
 import { GuestAppearanceCard } from './GuestAppearanceCard';
 import { MobileMenuShell } from './MobileMenuShell';
 import { Icon } from './Icon';
 import { icons } from '../icons';
+import { GitHubFeedbackLinks } from './GitHubFeedbackLinks';
 import type { Theme } from '../hooks/useTheme';
 
 export type SiteHeaderProps = {
@@ -35,8 +35,8 @@ export function SiteHeader({ theme, setTheme, onSignOut }: SiteHeaderProps) {
             Mahjong with Friends
           </Link>
 
-          <div className="col-start-2 row-start-1 hidden min-w-0 justify-self-center md:col-start-2 md:flex">
-            <AppNav variant="header" />
+          <div className="col-start-2 hidden min-w-0 justify-self-center md:col-start-2 md:flex md:items-center">
+            <GitHubFeedbackLinks />
           </div>
 
           <div className="col-start-2 flex items-center justify-end gap-1 justify-self-end md:col-start-3">
@@ -67,7 +67,15 @@ export function SiteHeader({ theme, setTheme, onSignOut }: SiteHeaderProps) {
           id="site-nav-drawer"
           className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-4"
         >
-          <AppNav variant="drawer" onItemClick={closeMobile} />
+          <h2 id={menuTitleId} className="sr-only">
+            Menu
+          </h2>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
+              Feedback
+            </p>
+            <GitHubFeedbackLinks className="self-start" />
+          </div>
 
           {signedIn ? (
             <AccountDrawerCard

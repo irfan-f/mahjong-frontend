@@ -2,8 +2,9 @@
 
 Web client for **Hong Kong (Cantonese) Mahjong**. **React 18**, **Vite**, **Tailwind 4**, **Firebase Auth**. Talks to **[mahjong-backend](../mahjong-backend)** for lobbies, seats, and game state.
 
-**Live:** [irfan-f.github.io/mahjong-frontend](https://irfan-f.github.io/mahjong-frontend/)  
-**API (production):** [irfquake.tech](https://irfquake.tech) (see backend README)
+**Live:** [mahjong.irfan-f.com](https://mahjong.irfan-f.com)  
+**API (production):** [irfquake.tech](https://irfquake.tech) (see backend README)  
+**Deploy:** [deploy/README.md](deploy/README.md)
 
 ## Docs
 
@@ -56,11 +57,10 @@ Use `.env.example` as a template. Do not commit `.env`.
 - Tailwind CSS 4  
 - Firebase Auth (ID token as `Authorization: Bearer` on API calls)
 
-## GitHub Pages
+## Hosting
 
-- **`HashRouter`** so deep links work on static hosting.  
-- Production **`base`** is `/mahjong-frontend/` (see `vite.config.ts`); deploy under that path (e.g. user/org GitHub Pages project site).
+Production is static files on **mahjong.irfan-f.com** (Vite `base: '/'`, **HashRouter** for deep links). CI runs on GitHub; deploy with rsync — see [deploy/README.md](deploy/README.md).
 
 ## Firebase Auth
 
-Add your GitHub Pages origin (e.g. `https://irfan-f.github.io`) under Firebase **Authentication → Settings → Authorized domains** so OAuth and email link flows work in production.
+Add **`mahjong.irfan-f.com`** under Firebase **Authentication → Settings → Authorized domains**.

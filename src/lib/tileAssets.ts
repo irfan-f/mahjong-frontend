@@ -9,7 +9,7 @@ export function tileBackAssetPath(): string {
 
 /**
  * Asset path for a tile. Backend uses "stick"; assets use "bamboo" (same suit).
- * Uses BASE_URL so tiles work under Vite dev and under GitHub Pages (base /mahjong-frontend/).
+ * Uses BASE_URL so tiles work in dev and production (Vite base /).
  */
 export function tileToAssetPath(tile: Tile): string {
   const v = String(tile.value);

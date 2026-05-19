@@ -483,7 +483,7 @@ export function Game() {
   if (loading) {
     return (
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -501,7 +501,7 @@ export function Game() {
   if (error && !game) {
     return (
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -518,7 +518,7 @@ export function Game() {
   if (!game) {
     return (
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -557,6 +557,7 @@ export function Game() {
         onSignOut={signOut}
         title="Game"
         subtitle="Mahjong with Friends"
+        showFeedback
         mobileStatus={mobileSessionStatus}
         leading={
           <Link
