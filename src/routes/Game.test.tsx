@@ -20,6 +20,10 @@ vi.mock('../hooks/useTheme', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
 }));
 
+vi.mock('../hooks/useResourceEvents', () => ({
+  useResourceEvents: vi.fn(),
+}));
+
 vi.mock('../components/AccountMenu', () => ({
   AccountMenu: () => <div>AccountMenu</div>,
 }));
