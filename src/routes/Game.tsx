@@ -27,6 +27,7 @@ import { GameBoard } from '../components/game/GameBoard';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
 import { icons } from '../icons';
+import { useResourceEvents } from '../hooks/useResourceEvents';
 
 export function Game() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -169,34 +170,42 @@ export function Game() {
     void refreshGameStateRef.current({ finishLoading: true });
   }, [gameId]);
 
-  useEffect(() => {
-    if (!gameId) return;
-    const interval = setInterval(() => {
-      if (actingRef.current) return;
-      void refreshGameState();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [gameId, refreshGameState]);
-
   const isEnded = game?.status === 'ended';
 
+  useResourceEvents('game', gameId, Boolean(gameId), getIdToken, () => {
+    void refreshGameState();
+  });
+
+  const refreshLobbyState = useCallback(async () => {
+    const lobbyId = game?.lobby_id;
+    if (!lobbyId) return;
+    const token = await getIdToken();
+    if (!token) return;
+    try {
+      const data = await getLobby(lobbyId, token);
+      if (data) setLobby(data);
+    } catch {
+      // Best-effort; ignore transient failures.
+    }
+  }, [game?.lobby_id, getIdToken]);
+
+  useResourceEvents('lobby', game?.lobby_id, Boolean(isEnded && game?.lobby_id), getIdToken, () => {
+    void refreshLobbyState();
+  });
+
   useEffect(() => {
-    if (!game?.lobby_id || !isEnded) return;
-    const lobbyId = game.lobby_id;
-    const poll = async () => {
-      const token = await getIdToken(true);
-      if (!token) return;
-      try {
-        const data = await getLobby(lobbyId, token);
-        if (data) setLobby(data);
-      } catch {
-        // Lobby polling is best-effort; ignore transient failures.
-      }
-    };
-    void poll();
-    const interval = setInterval(poll, 2000);
-    return () => clearInterval(interval);
-  }, [game?.lobby_id, isEnded, getIdToken]);
+    if (!game?.claimWindowEndsAt) return;
+    const endMs = Date.parse(game.claimWindowEndsAt);
+    if (Number.isNaN(endMs)) return;
+    const delay = endMs - Date.now();
+    const run = () => void refreshGameState();
+    if (delay <= 0) {
+      run();
+      return;
+    }
+    const timer = window.setTimeout(run, delay + 50);
+    return () => window.clearTimeout(timer);
+  }, [game?.claimWindowEndsAt, refreshGameState]);
 
   useEffect(() => {
     if (!isEnded || !lobby?.currentGameId) return;
