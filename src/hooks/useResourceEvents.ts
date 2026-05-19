@@ -15,7 +15,9 @@ export function useResourceEvents(
   onUpdated: () => void
 ): void {
   const onUpdatedRef = useRef(onUpdated);
-  onUpdatedRef.current = onUpdated;
+  useEffect(() => {
+    onUpdatedRef.current = onUpdated;
+  });
 
   useEffect(() => {
     if (!id || !enabled) return;
