@@ -1,5 +1,3 @@
-import { useState, useRef, useCallback } from 'react';
-import { useClickOutside } from '../hooks/useClickOutside';
 import type { Theme } from '../hooks/useTheme';
 import { Icon } from './Icon';
 import { icons } from '../icons';
@@ -10,15 +8,22 @@ const LABELS: Record<Theme, string> = {
   system: 'System',
 };
 
-function ThemeIcon({ theme }: { theme: Theme }) {
-  const src = theme === 'light' ? icons.sun : theme === 'dark' ? icons.moon : icons.defaultMode;
-  return (
-    <Icon
-      src={src}
-      className="size-5 [&_.icon-svg]:size-5"
-      aria-hidden
-    />
-  );
+const NEXT_THEME: Record<Theme, Theme> = {
+  light: 'dark',
+  dark: 'system',
+  system: 'light',
+};
+
+const SWITCH_TO_PHRASE: Record<Theme, string> = {
+  light: 'Switch to dark mode',
+  dark: 'Switch to system theme',
+  system: 'Switch to light mode',
+};
+
+function NextThemeIcon({ theme }: { theme: Theme }) {
+  const next = NEXT_THEME[theme];
+  const src = next === 'light' ? icons.sun : next === 'dark' ? icons.moon : icons.defaultMode;
+  return <Icon src={src} className="size-5 shrink-0 [&_.icon-svg]:size-5" aria-hidden />;
 }
 
 export function ThemeToggle({
@@ -32,21 +37,6 @@ export function ThemeToggle({
   className?: string;
   variant?: 'icon' | 'menu' | 'inline';
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const handleClose = useCallback(() => setOpen(false), []);
-
-  useClickOutside(ref, handleClose, open);
-
-  const listboxId = 'theme-listbox';
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    },
-    []
-  );
-
   const isMenu = variant === 'menu';
 
   if (variant === 'inline') {
@@ -54,7 +44,7 @@ export function ThemeToggle({
       <div
         role="radiogroup"
         aria-label="Theme"
-        className={`flex rounded-lg border border-border p-0.5 bg-(--color-surface) gap-0.5 ${className ?? ''}`}
+        className={`flex gap-0.5 rounded-lg border border-border bg-(--color-surface) p-0.5 ${className ?? ''}`}
       >
         {(['light', 'dark', 'system'] as const).map((t) => (
           <button
@@ -62,6 +52,12 @@ export function ThemeToggle({
             type="button"
             role="radio"
             aria-checked={theme === t}
+            aria-label={
+              theme === t ? `Using ${LABELS[t]} mode` : `Switch to ${LABELS[t].toLowerCase()} mode`
+            }
+            title={
+              theme === t ? `Using ${LABELS[t]} mode` : `Switch to ${LABELS[t].toLowerCase()} mode`
+            }
             onClick={() => setTheme(t)}
             className={`flex-1 rounded-md px-1.5 py-2 text-xs font-semibold transition-colors sm:text-sm ${
               theme === t
@@ -76,52 +72,29 @@ export function ThemeToggle({
     );
   }
 
+  const phrase = SWITCH_TO_PHRASE[theme];
+
   return (
-    <div ref={ref} className={`relative ${className ?? ''}`}>
-      <button
-        type="button"
-        id={isMenu ? undefined : 'theme-toggle'}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={handleKeyDown}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={open ? listboxId : undefined}
-        aria-label={`Theme: ${LABELS[theme]}`}
-        title={`Theme: ${LABELS[theme]}`}
-        className={
-          isMenu
-            ? 'flex w-full cursor-pointer items-center gap-3 rounded px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-panel-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring-focus'
-            : 'btn-nav-header min-h-[44px] min-w-[44px] text-text-primary'
-        }
-      >
-        <ThemeIcon theme={theme} />
-        {isMenu && <span>Theme: {LABELS[theme]}</span>}
-      </button>
-      {open && (
-        <div
-          id={listboxId}
-          role="listbox"
-          aria-label="Theme options"
-          className={`absolute right-0 top-full mt-1 min-w-32 rounded-lg border border-border bg-surface-panel py-1 shadow-lg ${isMenu ? 'z-[51]' : 'z-50'}`}
-          onKeyDown={handleKeyDown}
-        >
-          {(['light', 'dark', 'system'] as const).map((t) => (
-            <button
-              key={t}
-              role="option"
-              aria-selected={theme === t}
-              type="button"
-              onClick={() => {
-                setTheme(t);
-                setOpen(false);
-              }}
-              className="w-full cursor-pointer rounded px-4 py-2 text-left text-sm text-text-primary hover:bg-surface-panel-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring-focus"
-            >
-              {LABELS[t]}
-            </button>
-          ))}
-        </div>
+    <button
+      type="button"
+      id={isMenu ? undefined : 'theme-toggle'}
+      onClick={() => setTheme(NEXT_THEME[theme])}
+      aria-label={phrase}
+      title={phrase}
+      className={
+        isMenu
+          ? `flex w-full cursor-pointer items-center gap-3 rounded px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-panel-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring-focus ${className ?? ''}`
+          : `btn-nav-header inline-flex min-h-[44px] min-w-[44px] items-center gap-2 px-2 text-text-primary sm:min-w-0 sm:px-3 ${className ?? ''}`
+      }
+    >
+      <NextThemeIcon theme={theme} />
+      {isMenu ? (
+        <span>{phrase}</span>
+      ) : (
+        <span className="hidden max-w-[10.5rem] truncate text-left text-xs font-semibold sm:inline">
+          {phrase}
+        </span>
       )}
-    </div>
+    </button>
   );
 }

@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { createLobby, joinLobby, userSetup, getMyLobbies, deleteLobby } from '../api/endpoints';
 import type { UserLobbySummary } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { PageMeta } from '../components/PageMeta';
 import { SiteHeader } from '../components/SiteHeader';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
@@ -109,7 +110,9 @@ export function Home() {
 
   if (authLoading) {
     return (
-      <div className="h-screen flex flex-col bg-(--color-surface)">
+      <>
+        <PageMeta />
+        <div className="h-screen flex flex-col bg-(--color-surface)">
         <SiteHeader theme={theme} setTheme={setTheme} />
         <main
           id="main-content"
@@ -119,12 +122,15 @@ export function Home() {
           <Spinner className="w-8 h-8 text-muted" aria-hidden />
         </main>
       </div>
+      </>
     );
   }
 
   if (!user) {
     return (
-      <div className="h-screen flex flex-col bg-(--color-surface)">
+      <>
+        <PageMeta />
+        <div className="h-screen flex flex-col bg-(--color-surface)">
         <SiteHeader theme={theme} setTheme={setTheme} />
         <main
           id="main-content"
@@ -154,10 +160,13 @@ export function Home() {
           </div>
         </main>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      <PageMeta />
     <div className="h-screen flex flex-col bg-(--color-surface)">
       <SiteHeader theme={theme} setTheme={setTheme} onSignOut={signOut} />
 
@@ -313,5 +322,6 @@ export function Home() {
         </section>
       </main>
     </div>
+    </>
   );
 }

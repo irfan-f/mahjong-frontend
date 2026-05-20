@@ -26,7 +26,7 @@ export function windToDisplayName(wind: WindTileValue | undefined): string {
 export function windToColorClass(wind: WindTileValue | undefined): string {
   switch (wind) {
     case 'east':
-      return 'text-emerald-400 dark:text-emerald-300';
+      return 'text-(--color-primary)';
     case 'south':
       return 'text-amber-400 dark:text-amber-300';
     case 'west':

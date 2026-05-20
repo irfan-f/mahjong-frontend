@@ -22,11 +22,13 @@ import {
 import { DEFAULT_RULESET_ID } from '../terminology/rulesetTerminology';
 import type { Game as GameType, Lobby as LobbyType, Tile, ScoringResult } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { PageMeta } from '../components/PageMeta';
 import { PlaySessionHeader } from '../components/PlaySessionHeader';
 import { GameBoard } from '../components/game/GameBoard';
 import { Spinner } from '../components/Spinner';
 import { Icon } from '../components/Icon';
 import { icons } from '../icons';
+import { useResourceEvents } from '../hooks/useResourceEvents';
 
 export function Game() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -48,6 +50,15 @@ export function Game() {
   const changeSigRef = useRef<string | null>(null);
   const lastChangeAtRef = useRef<number>(Date.now());
   const [stuckForMs, setStuckForMs] = useState(0);
+
+  const pageMeta = (
+    <PageMeta
+      title="Game"
+      description="Mahjong game in progress on Mahjong with Friends."
+      path={gameId ? `/game/${gameId}` : '/game'}
+      noIndex
+    />
+  );
 
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -169,34 +180,42 @@ export function Game() {
     void refreshGameStateRef.current({ finishLoading: true });
   }, [gameId]);
 
-  useEffect(() => {
-    if (!gameId) return;
-    const interval = setInterval(() => {
-      if (actingRef.current) return;
-      void refreshGameState();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [gameId, refreshGameState]);
-
   const isEnded = game?.status === 'ended';
 
+  useResourceEvents('game', gameId, Boolean(gameId), getIdToken, () => {
+    void refreshGameState();
+  });
+
+  const refreshLobbyState = useCallback(async () => {
+    const lobbyId = game?.lobby_id;
+    if (!lobbyId) return;
+    const token = await getIdToken();
+    if (!token) return;
+    try {
+      const data = await getLobby(lobbyId, token);
+      if (data) setLobby(data);
+    } catch {
+      // Best-effort; ignore transient failures.
+    }
+  }, [game?.lobby_id, getIdToken]);
+
+  useResourceEvents('lobby', game?.lobby_id, Boolean(isEnded && game?.lobby_id), getIdToken, () => {
+    void refreshLobbyState();
+  });
+
   useEffect(() => {
-    if (!game?.lobby_id || !isEnded) return;
-    const lobbyId = game.lobby_id;
-    const poll = async () => {
-      const token = await getIdToken(true);
-      if (!token) return;
-      try {
-        const data = await getLobby(lobbyId, token);
-        if (data) setLobby(data);
-      } catch {
-        // Lobby polling is best-effort; ignore transient failures.
-      }
-    };
-    void poll();
-    const interval = setInterval(poll, 2000);
-    return () => clearInterval(interval);
-  }, [game?.lobby_id, isEnded, getIdToken]);
+    if (!game?.claimWindowEndsAt) return;
+    const endMs = Date.parse(game.claimWindowEndsAt);
+    if (Number.isNaN(endMs)) return;
+    const delay = endMs - Date.now();
+    const run = () => void refreshGameState();
+    if (delay <= 0) {
+      run();
+      return;
+    }
+    const timer = window.setTimeout(run, delay + 50);
+    return () => window.clearTimeout(timer);
+  }, [game?.claimWindowEndsAt, refreshGameState]);
 
   useEffect(() => {
     if (!isEnded || !lobby?.currentGameId) return;
@@ -482,8 +501,10 @@ export function Game() {
 
   if (loading) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -496,12 +517,15 @@ export function Game() {
           <p>Loading game…</p>
         </main>
       </div>
+      </>
     );
   }
   if (error && !game) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -513,12 +537,15 @@ export function Game() {
           </Link>
         </main>
       </div>
+      </>
     );
   }
   if (!game) {
     return (
+      <>
+        {pageMeta}
       <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
-        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" />
+        <PlaySessionHeader theme={theme} setTheme={setTheme} onSignOut={signOut} title="Game" subtitle="Mahjong with Friends" showFeedback />
         <main
           id="main-content"
           tabIndex={-1}
@@ -530,6 +557,7 @@ export function Game() {
           </Link>
         </main>
       </div>
+      </>
     );
   }
 
@@ -550,6 +578,8 @@ export function Game() {
     );
 
   return (
+    <>
+      {pageMeta}
     <div className="flex min-h-dvh h-dvh flex-col bg-(--color-surface)">
       <PlaySessionHeader
         theme={theme}
@@ -557,6 +587,7 @@ export function Game() {
         onSignOut={signOut}
         title="Game"
         subtitle="Mahjong with Friends"
+        showFeedback
         mobileStatus={mobileSessionStatus}
         leading={
           <Link
@@ -618,5 +649,6 @@ export function Game() {
         />
       </main>
     </div>
+    </>
   );
 }

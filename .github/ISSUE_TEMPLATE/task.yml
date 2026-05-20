@@ -1,0 +1,34 @@
+name: "Task"
+description: "Small, actionable unit of work."
+labels: ["task"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: "Goal"
+      description: "What outcome are we aiming for?"
+      placeholder: "Do X so that Y."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: "Scope"
+      description: "What’s in/out? Any constraints?"
+      placeholder: |
+        In:
+        - …
+        Out:
+        - …
+    validations:
+      required: false
+  - type: textarea
+    id: checklist
+    attributes:
+      label: "Checklist"
+      description: "Break it into concrete steps."
+      placeholder: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: false

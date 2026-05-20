@@ -233,28 +233,29 @@
   }
 }
 
+/* Palette aligned with portfolio-site (neutral surfaces + green accent). */
 .dark {
-  --color-bg-primary: #011627;
-  --color-bg-header: #011627;
-  --color-surface: #011627;
-  --color-surface-panel: #0b253a;
-  --color-surface-panel-muted: #132f4c;
-  --color-primary: #2dd4bf;
-  --color-primary-hover: #5eead4;
+  --color-bg-primary: #18181b;
+  --color-bg-header: #18181b;
+  --color-surface: #18181b;
+  --color-surface-panel: #27272a;
+  --color-surface-panel-muted: #3f3f46;
+  --color-primary: #7be4ad;
+  --color-primary-hover: #65c997;
   /** Accent used specifically for "your turn" highlights (seats/panel/recent). */
-  --color-your-turn: #22d3ee;
-  --color-secondary: #134e4a;
-  --color-text-primary: #d6deeb;
-  --color-text-muted: #7fa4bf;
-  --color-border: #5f7e97;
-  --color-ring-focus: #2dd4bf;
+  --color-your-turn: #7be4ad;
+  --color-secondary: #3f3f46;
+  --color-text-primary: #fafafa;
+  --color-text-muted: #a1a1aa;
+  --color-border: #3f3f46;
+  --color-ring-focus: #7be4ad;
   --color-danger: #ef5350;
   --color-warning: #fbbf24;
-  --color-claim-pong: #a78bfa;
-  --color-claim-kong: #818cf8;
-  --color-claim-chow: #2dd4bf;
+  --color-claim-pong: #d97706;
+  --color-claim-kong: #38bdf8;
+  --color-claim-chow: #7be4ad;
   --color-claim-mahjong: #fbbf24;
-  --color-prev-turn: #f472b6;
+  --color-prev-turn: #fb923c;
   --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2);
   color-scheme: dark;
@@ -263,26 +264,26 @@
 @theme {
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 
-  --color-bg-primary: #faf9f7;
-  --color-bg-header: #f5f3f0;
-  --color-surface: #faf9f7;
-  --color-surface-panel: #f0ede8;
-  --color-surface-panel-muted: #e8e5e0;
-  --color-primary: #0f766e;
-  --color-primary-hover: #115e59;
+  --color-bg-primary: #ffffff;
+  --color-bg-header: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-panel: #f4f4f5;
+  --color-surface-panel-muted: #e4e4e7;
+  --color-primary: #179b6a;
+  --color-primary-hover: #128a5e;
   --color-your-turn: var(--color-primary);
-  --color-secondary: #ccfbf1;
-  --color-text-primary: #374151;
-  --color-text-muted: #6b7280;
-  --color-border: #e5e2dd;
-  --color-ring-focus: #0d9488;
-  --color-danger: #dc2626;
+  --color-secondary: #e3f6ec;
+  --color-text-primary: #0a0a0a;
+  --color-text-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-ring-focus: #179b6a;
+  --color-danger: #e64d49;
   --color-warning: #d97706;
-  --color-claim-pong: #7c3aed;
-  --color-claim-kong: #4f46e5;
-  --color-claim-chow: #0d9488;
+  --color-claim-pong: #b45309;
+  --color-claim-kong: #0369a1;
+  --color-claim-chow: #179b6a;
   --color-claim-mahjong: #d97706;
-  --color-prev-turn: #6d28d9;
+  --color-prev-turn: #c2410c;
   --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -342,7 +343,7 @@
     @apply rounded-xl border border-border bg-surface-panel shadow-panel;
   }
   .btn-primary {
-    @apply min-h-11 cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-[0.9375rem] font-semibold text-white transition-[background-color,transform,filter] duration-150 ease-out md:min-h-[46px] md:px-5.5 md:py-2.75 md:text-base lg:min-h-[50px] lg:px-7 lg:py-3 lg:text-[1.0625rem] dark:text-bg-primary;
+    @apply min-h-11 cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-[0.9375rem] font-semibold text-white transition-[background-color,transform,filter] duration-150 ease-out md:min-h-[46px] md:px-5.5 md:py-2.75 md:text-base lg:min-h-[50px] lg:px-7 lg:py-3 lg:text-[1.0625rem];
   }
   .btn-primary:hover:not(:disabled) {
     @apply bg-primary-hover;

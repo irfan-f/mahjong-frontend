@@ -1,6 +1,6 @@
 import { useState, useCallback, type ReactNode } from 'react';
 import { AccountMenu } from './AccountMenu';
-import { AppNav } from './AppNav';
+import { GitHubFeedbackLinks } from './GitHubFeedbackLinks';
 import { AccountDrawerCard } from './AccountDrawerCard';
 import { MobileMenuShell } from './MobileMenuShell';
 import { Icon } from './Icon';
@@ -17,10 +17,12 @@ export type PlaySessionHeaderProps = {
   leading?: ReactNode;
   /** Right-side cluster on large screens (e.g. What-if, status). */
   desktopActions?: ReactNode;
-  /** Injected under main nav in the mobile drawer; receive `close` to dismiss after navigation. */
+  /** Injected in the mobile drawer; receive `close` to dismiss after navigation. */
   mobileDrawerExtras?: ReactNode | ((close: () => void) => ReactNode);
   /** Shown between title and menu on small screens only (e.g. turn status). */
   mobileStatus?: ReactNode;
+  /** Show Report feedback link in the header bar. */
+  showFeedback?: boolean;
 };
 
 export function PlaySessionHeader({
@@ -33,6 +35,7 @@ export function PlaySessionHeader({
   desktopActions,
   mobileDrawerExtras,
   mobileStatus,
+  showFeedback = false,
 }: PlaySessionHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const close = useCallback(() => setMobileOpen(false), []);
@@ -58,25 +61,29 @@ export function PlaySessionHeader({
           </div>
 
           {mobileStatus ? (
-            <div className="flex max-w-[38%] shrink-0 items-center justify-end truncate lg:hidden">{mobileStatus}</div>
+            <div className="flex max-w-[38%] shrink-0 items-center justify-end truncate lg:hidden">
+              {mobileStatus}
+            </div>
           ) : null}
 
-          <div className="hidden shrink-0 items-center gap-2 lg:flex">
-            {desktopActions}
-            <AccountMenu theme={theme} setTheme={setTheme} onSignOut={onSignOut} />
+          <div className="flex shrink-0 items-center gap-2">
+            {showFeedback ? <GitHubFeedbackLinks className="shrink-0" /> : null}
+            <div className="hidden items-center gap-2 lg:flex">
+              {desktopActions}
+              <AccountMenu theme={theme} setTheme={setTheme} onSignOut={onSignOut} />
+            </div>
+            <button
+              type="button"
+              className="btn-nav-header shrink-0 lg:hidden"
+              aria-expanded={mobileOpen}
+              aria-controls="play-session-drawer"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              title={mobileOpen ? 'Close menu' : 'Open menu'}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              <Icon src={icons.menu} className="size-5 [&_.icon-svg]:size-5" aria-hidden />
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="btn-nav-header shrink-0 lg:hidden"
-            aria-expanded={mobileOpen}
-            aria-controls="play-session-drawer"
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            title={mobileOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            <Icon src={icons.menu} className="size-5 [&_.icon-svg]:size-5" aria-hidden />
-          </button>
         </div>
       </header>
 
@@ -98,8 +105,6 @@ export function PlaySessionHeader({
               Done
             </button>
           </div>
-
-          <AppNav variant="drawer" onItemClick={close} />
 
           {extras ? <div className="flex flex-col gap-1">{extras}</div> : null}
 

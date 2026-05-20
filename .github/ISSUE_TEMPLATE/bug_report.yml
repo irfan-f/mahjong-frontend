@@ -1,0 +1,42 @@
+name: "Bug report"
+description: "Report something that is broken or incorrect."
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for taking the time to report a bug."
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Summary"
+      description: "What happened vs. what you expected."
+      placeholder: "When I…, it…, but I expected…"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to reproduce"
+      description: "Numbered steps so we can reproduce quickly."
+      placeholder: |
+        1. Go to…
+        2. Click…
+        3. See error…
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "OS, browser, device, version/commit, etc."
+      placeholder: "macOS 14.6 · Chrome 125 · commit abc123"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / screenshots"
+      description: "Paste relevant logs or attach screenshots."
+      render: shell
+    validations:
+      required: false
