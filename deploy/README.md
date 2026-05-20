@@ -14,8 +14,8 @@ GitHub Actions runs **CI only** (lint, test, build) — it does not deploy. Prod
 ## Deploy (every release)
 
 ```bash
-cp .env.example .env   # if needed; Firebase + VITE_API_URL=https://irfquake.tech
-npm run build
+cp .env.example .env   # Firebase keys for build; local API URL can stay in .env.local
+npm run build          # uses .env.production → VITE_API_URL=https://irfquake.tech
 rsync -avz --delete \
   -e "ssh -i ~/.ssh/id_ed25519_mahjong_deploy" \
   dist/ deploy-mahjong@YOUR_VPS_IP:/var/www/mahjong-frontend/
@@ -112,5 +112,6 @@ Browser: sign in, lobby, game (`/#/...` routes).
 | Cloudflare 520 | Origin HTTPS broken; check `mahjong-front` enabled, not duplicate in `default-catchall` |
 | `conflicting server name` | Remove mahjong blocks from `default-catchall` / `portfolio-site` |
 | Blank page | Wrong build (old `/mahjong-frontend/` base); run `npm run build` and rsync again |
+| **Connection refused** / API calls to `localhost:3000` | Rebuild after fixing env: `.env.local` overrides `.env`; production uses `.env.production`. Verify with `strings dist/assets/*.js \| grep irfquake` |
 | CORS errors | `CORS_ORIGIN` + API restart |
 | Auth fails | Firebase authorized domain `mahjong.irfan-f.com` |
