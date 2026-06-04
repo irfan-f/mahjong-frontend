@@ -131,6 +131,8 @@ export function Game() {
    */
   const BOT_STEP_DELAY_MS = 500;
   const MAX_BOT_STEPS = 20;
+  /** Show manual bot nudge only after the table has been stuck on a bot turn this long. */
+  const NUDGE_BOTS_DELAY_MS = 10_000;
 
   const driveBotSteps = useCallback(async () => {
     if (!gameId) return;
@@ -622,8 +624,9 @@ export function Game() {
           showNudgeBots={
             !acting
             && !isEnded
+            && botTurn
             && (game.private?.legalActions?.[user?.uid ?? '']?.length ?? 0) === 0
-            && stuckForMs >= 8000
+            && stuckForMs >= NUDGE_BOTS_DELAY_MS
           }
           onRollAndDeal={handleRollAndDeal}
           onDraw={handleDraw}
