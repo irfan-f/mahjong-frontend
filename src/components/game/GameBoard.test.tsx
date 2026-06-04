@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GameBoard } from './GameBoard';
 import type { Game, Tile, PlayerMeld } from '../../types';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+
+vi.mock('../../hooks/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(() => false),
+}));
+
+afterEach(() => {
+  vi.mocked(useMediaQuery).mockReturnValue(false);
+});
 
 const baseTile: Tile = { _type: 'dot', value: 2, count: 4 };
 
@@ -455,6 +464,54 @@ describe('GameBoard playerMelds and concealed actions', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /Declare Mahjong/i }));
+    expect(onMahjong).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Mahjong in the mobile quick-action bar when declareMahjong is legal', async () => {
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    const user = userEvent.setup();
+    const onMahjong = vi.fn();
+
+    const melds = [1, 2, 3, 4].map((n) => makeMeld({ meldId: `m${n}` }));
+
+    const game = makeGame({
+      playerMelds: { p1: melds, p2: [], p3: [], p4: [] },
+      private: {
+        legalActions: {
+          p1: [{ kind: 'declareMahjong' }],
+          p2: [],
+          p3: [],
+          p4: [],
+        },
+      },
+    });
+
+    render(
+      <GameBoard
+        game={game}
+        currentUserId="p1"
+        currentUserDisplayName="You"
+        error={null}
+        acting={false}
+        onRollAndDeal={() => {}}
+        onDraw={() => {}}
+        onDiscardTile={() => {}}
+        onMahjong={onMahjong}
+        onClaimPong={() => {}}
+        onClaimKong={() => {}}
+        onClaimChow={() => {}}
+        onPassClaim={() => {}}
+        onConcealedPong={() => {}}
+        onConcealedChow={() => {}}
+        onConcealedKong={() => {}}
+      />
+    );
+
+    const quickActions = screen.getByRole('region', { name: /Your quick actions/i });
+    const mahjongBtn = screen.getByRole('button', { name: /Declare Mahjong/i });
+    expect(quickActions).toContainElement(mahjongBtn);
+
+    await user.click(mahjongBtn);
     expect(onMahjong).toHaveBeenCalledTimes(1);
   });
 });

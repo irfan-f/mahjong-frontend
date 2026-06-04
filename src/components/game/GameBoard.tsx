@@ -204,6 +204,10 @@ export function GameBoard({
     canDiscard &&
     concealedMode == null &&
     selectedClaimGroup == null;
+  const mobileMahjongDirectCta =
+    init.tilesDealt && !isEnded && canDeclareMahjong && (meldCallReady || !canDefineMelds);
+  const mobileDefineMeldsToWinCta =
+    init.tilesDealt && !isEnded && canDeclareMahjong && !mobileMahjongDirectCta;
   const [winMeldModalOpen, setWinMeldModalOpen] = useState(false);
 
   const isMobileScreen = useMediaQuery('(max-width: 639px)');
@@ -703,7 +707,7 @@ export function GameBoard({
               Roll & deal
             </HudActionButton>
           )}
-          {init.tilesDealt && !isEnded && canDeclareMahjong && (
+          {init.tilesDealt && !isEnded && canDeclareMahjong && !isMobileScreen && (
             meldCallReady || !canDefineMelds ? (
               <HudActionButton
                 variant="primary"
@@ -787,6 +791,10 @@ export function GameBoard({
               setConcealedMode('kong');
               setConcealedSelectedIndices([]);
             }}
+            mobileMahjongDirectCta={isMobileScreen && mobileMahjongDirectCta}
+            mobileDefineMeldsToWinCta={isMobileScreen && mobileDefineMeldsToWinCta}
+            onMahjong={onMahjong}
+            onOpenWinMeldModal={() => setWinMeldModalOpen(true)}
           />
         ) : null}
         </div>
