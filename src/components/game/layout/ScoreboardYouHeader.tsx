@@ -100,6 +100,11 @@ export type ScoreboardYouHudActionBarProps = {
   concealedKongActive: boolean;
   kongButtonLabel: string;
   onToggleConcealedKong: () => void;
+  /** Action rail is desktop-only; Mahjong lives here on small viewports. */
+  mobileMahjongDirectCta?: boolean;
+  mobileDefineMeldsToWinCta?: boolean;
+  onMahjong?: () => void;
+  onOpenWinMeldModal?: () => void;
 };
 
 export function ScoreboardYouHudActionBar({
@@ -125,6 +130,10 @@ export function ScoreboardYouHudActionBar({
   concealedKongActive,
   kongButtonLabel,
   onToggleConcealedKong,
+  mobileMahjongDirectCta = false,
+  mobileDefineMeldsToWinCta = false,
+  onMahjong,
+  onOpenWinMeldModal,
 }: ScoreboardYouHudActionBarProps) {
   return (
     <div
@@ -132,6 +141,34 @@ export function ScoreboardYouHudActionBar({
       role="region"
       aria-label="Your quick actions"
     >
+      {mobileMahjongDirectCta && onMahjong ? (
+        <HudActionButton
+          variant="primary"
+          onClick={onMahjong}
+          disabled={acting}
+          loading={acting}
+          loadingContent={<Spinner className="size-3.5" aria-hidden />}
+          className="btn-claim-mahjong"
+          aria-label={acting ? 'Declaring Mahjong' : 'Declare Mahjong'}
+          title="Declare Mahjong"
+        >
+          Mahjong
+        </HudActionButton>
+      ) : null}
+      {mobileDefineMeldsToWinCta && onOpenWinMeldModal ? (
+        <HudActionButton
+          variant="primary"
+          onClick={onOpenWinMeldModal}
+          disabled={acting}
+          loading={acting}
+          loadingContent={<Spinner className="size-3.5" aria-hidden />}
+          className="btn-claim-mahjong"
+          aria-label={acting ? 'Opening meld declaration' : 'Define melds before Mahjong'}
+          title="Declare melds before calling Mahjong"
+        >
+          Define melds to win
+        </HudActionButton>
+      ) : null}
       {showNudgeBots && onNudgeBots ? (
         <HudActionButton
           variant="secondary"
